@@ -83,6 +83,7 @@ class App extends BaseConfig
     */
     public string $permittedURIChars = 'a-z 0-9~%.:_\-';
 
+
     /**
      * --------------------------------------------------------------------------
      * Default Locale

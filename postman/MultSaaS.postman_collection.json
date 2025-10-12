@@ -105,6 +105,32 @@
       ]
     },
     {
+      "name": "Subscriptions - Cancel",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+          { "key": "Accept", "value": "application/json", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/subscriptions/{{subscription_id}}/cancel",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "subscriptions", "{{subscription_id}}", "cancel"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "Payments - Create",
       "request": {
         "method": "POST",

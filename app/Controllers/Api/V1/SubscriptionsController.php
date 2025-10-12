@@ -111,4 +111,119 @@ class SubscriptionsController extends BaseApiController
             return $this->respondError('Falha ao criar assinatura', 500, ['exception' => $e->getMessage()]);
         }
     }
+
+    public function cancel(int $id = 0)
+    {
+        // Requer autenticação via JWT
+        $payload = $this->getAuthPayload();
+        if (! $payload || ! isset($payload['sub'])) {
+            return $this->respondError('Unauthorized', 401);
+        }
+        $tenantId = (int) $payload['sub'];
+
+        if ($id <= 0) {
+            return $this->respondError('ID inválido', 422);
+        }
+
+        // Buscar a assinatura
+        $sub = $this->db->table('subscriptions')
+            ->where('id', $id)
+            ->get()
+            ->getRowArray();
+
+        if (! $sub) {
+            return $this->respondError('Assinatura não encontrada', 404);
+        }
+
+        // Garantir que pertence ao tenant autenticado
+        if ((int) ($sub['tenant_id'] ?? 0) !== $tenantId) {
+            return $this->respondError('Assinatura não pertence ao tenant autenticado', 403);
+        }
+
+        // Se já cancelada ou inativa, evitar operação redundante
+        if ((string) ($sub['status'] ?? '') === 'canceled' || (int) ($sub['is_active'] ?? 1) === 0) {
+            return $this->respondError('Assinatura já cancelada ou inativa', 409);
+        }
+
+        $now = date('Y-m-d H:i:s');
+        try {
+            $this->db->table('subscriptions')
+                ->where('id', $id)
+                ->update([
+                    'status' => 'canceled',
+                    'is_active' => 0,
+                    'cancel_at' => $now,
+                    'canceled_at' => $now,
+                    'current_period_end' => $now,
+                    'updated_at' => $now,
+                ]);
+
+            $updated = $this->db->table('subscriptions')->where('id', $id)->get()->getRowArray();
+            return $this->respondOk(['subscription' => $updated], 200);
+        } catch (\Throwable $e) {
+            return $this->respondError('Falha ao cancelar assinatura', 500, ['exception' => $e->getMessage()]);
+        }
+    }
+
+    public function cancelAtPeriodEnd(int $id = 0)
+    {
+        // Requer autenticação via JWT
+        $payload = $this->getAuthPayload();
+        if (! $payload || ! isset($payload['sub'])) {
+            return $this->respondError('Unauthorized', 401);
+        }
+        $tenantId = (int) $payload['sub'];
+
+        if ($id <= 0) {
+            return $this->respondError('ID inválido', 422);
+        }
+
+        // Buscar a assinatura
+        $sub = $this->db->table('subscriptions')
+            ->where('id', $id)
+            ->get()
+            ->getRowArray();
+
+        if (! $sub) {
+            return $this->respondError('Assinatura não encontrada', 404);
+        }
+
+        // Garantir que pertence ao tenant autenticado
+        if ((int) ($sub['tenant_id'] ?? 0) !== $tenantId) {
+            return $this->respondError('Assinatura não pertence ao tenant autenticado', 403);
+        }
+
+        // Se já cancelada, evitar operação redundante
+        if ((string) ($sub['status'] ?? '') === 'canceled') {
+            return $this->respondError('Assinatura já cancelada', 409);
+        }
+
+        // Se já possui cancel_at futuro, tornar idempotente
+        $now = date('Y-m-d H:i:s');
+        $existingCancelAt = $sub['cancel_at'] ?? null;
+        if (! empty($existingCancelAt) && strtotime($existingCancelAt) >= time()) {
+            // Não altera novamente; retorna estado atual
+            $updated = $this->db->table('subscriptions')->where('id', $id)->get()->getRowArray();
+            return $this->respondOk(['subscription' => $updated], 200);
+        }
+
+        // Define cancelamento ao final do período atual, mantendo ativa até lá
+        $periodEnd = $sub['current_period_end'] ?? null;
+        $cancelAt = $periodEnd && strtotime($periodEnd) > 0 ? $periodEnd : $now;
+
+        try {
+            $this->db->table('subscriptions')
+                ->where('id', $id)
+                ->update([
+                    'cancel_at' => $cancelAt,
+                    'is_active' => 1,
+                    'updated_at' => $now,
+                ]);
+
+            $updated = $this->db->table('subscriptions')->where('id', $id)->get()->getRowArray();
+            return $this->respondOk(['subscription' => $updated], 200);
+        } catch (\Throwable $e) {
+            return $this->respondError('Falha ao agendar cancelamento', 500, ['exception' => $e->getMessage()]);
+        }
+    }
 }
