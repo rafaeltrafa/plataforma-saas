@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use CodeIgniter\Controller;
+use CodeIgniter\Database\BaseConnection;
 use CodeIgniter\HTTP\CLIRequest;
 use CodeIgniter\HTTP\IncomingRequest;
 use CodeIgniter\HTTP\RequestInterface;
@@ -27,6 +28,13 @@ abstract class BaseController extends Controller
      * @var CLIRequest|IncomingRequest
      */
     protected $request;
+
+    /**
+     * Shared database connection for controllers.
+     *
+     * @var BaseConnection|null
+     */
+    protected ?BaseConnection $db = null;
 
     /**
      * An array of helpers to be loaded automatically upon
@@ -54,5 +62,8 @@ abstract class BaseController extends Controller
         // Preload any models, libraries, etc, here.
 
         // E.g.: $this->session = service('session');
+
+        // Initialize a shared database connection
+        $this->db = \Config\Database::connect();
     }
 }

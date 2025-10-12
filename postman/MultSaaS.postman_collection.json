@@ -1,0 +1,139 @@
+{
+  "info": {
+    "name": "MultSaaS API",
+    "_postman_id": "c6f0b2e4-0f3c-4f7a-8c7f-collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Coleção para testar login, assinaturas e pagamentos com JWT."
+  },
+  "item": [
+    {
+      "name": "Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth/login",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "auth", "login"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "let json = {};",
+              "try { json = pm.response.json(); } catch (e) { json = {}; }",
+              "if (json && json.token) { pm.environment.set('token', json.token); }",
+              "if (json && json.tenant_id) { pm.environment.set('tenant_id', String(json.tenant_id)); }",
+              "pm.test('Token presente', function () { pm.expect(json.token, 'token ausente').to.exist; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Subscriptions - List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+          { "key": "Accept", "value": "application/json", "type": "text" },
+          { "key": "X-Tenant-ID", "value": "{{tenant_id}}", "type": "text", "disabled": true }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/subscriptions",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "subscriptions"]
+        }
+      }
+    },
+    {
+      "name": "Plans - List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+          { "key": "Accept", "value": "application/json", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/plans?app_id={{app_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "plans"],
+          "query": [{ "key": "app_id", "value": "{{app_id}}" }]
+        }
+      }
+    },
+    {
+      "name": "Subscriptions - Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/subscriptions",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "subscriptions"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"app_id\": {{app_id}},\n  \"app_plan_id\": {{app_plan_id}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
+              "const json = pm.response.json();",
+              "const sub = json && json.data && json.data.subscription;",
+              "if (sub && sub.id) { pm.environment.set('subscription_id', sub.id); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments - Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Tenant-ID", "value": "{{tenant_id}}", "disabled": true }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/payments",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "payments"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tenant_id\": {{tenant_id}},\n  \"app_id\": {{app_id}},\n  \"subscription_id\": {{subscription_id}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200/201', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
