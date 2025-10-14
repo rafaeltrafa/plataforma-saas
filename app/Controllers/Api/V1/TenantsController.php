@@ -16,8 +16,39 @@ class TenantsController extends BaseApiController
 
     public function create()
     {
-        // Parsing do corpo da requisição com helper padronizado
-        $input = $this->getInputPayload();
+        // Parsing robusto do corpo da requisição
+        $input = [];
+        if (method_exists($this->request, 'getJSON')) {
+            try {
+                $json = $this->request->getJSON(true);
+                if (is_array($json)) {
+                    $input = $json;
+                }
+            } catch (\Throwable $e) {
+                // segue para fallbacks
+            }
+        }
+        if (empty($input) && method_exists($this->request, 'getRawInput')) {
+            $raw = (array) ($this->request->getRawInput() ?? []);
+            if (! empty($raw)) {
+                $input = $raw;
+            }
+        }
+        if (empty($input)) {
+            $rawBody = $this->request->getBody();
+            if ($rawBody === '' || $rawBody === null) {
+                $rawBody = @file_get_contents('php://input');
+            }
+            if (is_string($rawBody) && trim($rawBody) !== '') {
+                $decoded = json_decode($rawBody, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $input = $decoded;
+                }
+            }
+        }
+        if (empty($input)) {
+            $input = $this->request->getPost() ?? [];
+        }
 
         // Completa chaves possivelmente ausentes a partir de variáveis do request
         $input['name'] = $input['name'] ?? $this->request->getVar('name');

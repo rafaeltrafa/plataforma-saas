@@ -6,18 +6,21 @@ use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 
-class TenantResolver implements FilterInterface
+/**
+ * Filtro no-op para resolver tenant.
+ * Mantido simples para não bloquear requests; posteriormente podemos popular
+ * contexto via subdomínio, cabeçalhos, etc.
+ */
+class TenantResolverFilter implements FilterInterface
 {
     public function before(RequestInterface $request, $arguments = null)
     {
-        // Exemplo: resolver tenant por header X-Tenant-ID ou subdomínio
-        // Este é um esqueleto; ajuste com sua regra e storage de contexto
-        // $tenantId = $request->getHeaderLine('X-Tenant-ID');
+        // No-op: futuramente podemos validar X-Tenant-ID, subdomínio, etc.
         return null;
     }
 
     public function after(RequestInterface $request, ResponseInterface $response, $arguments = null)
     {
-        // noop
+        // No-op
     }
 }

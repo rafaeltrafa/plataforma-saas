@@ -4,21 +4,22 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class AlterTenantsAddPassword extends Migration
+class AddAuthColumnsToTenants extends Migration
 {
     public function up(): void
     {
+        // Adiciona colunas para autenticação de tenants
         $fields = [
             'password_hash' => [
-                'type' => 'VARCHAR',
+                'type'       => 'VARCHAR',
                 'constraint' => 255,
-                'null' => true,
-                'comment' => 'Hash de senha para autenticação direta de tenants (opcional)'
+                'null'       => true,
+                'after'      => 'timezone',
             ],
             'last_login_at' => [
                 'type' => 'DATETIME',
                 'null' => true,
-                'comment' => 'Último login do tenant (se usar login direto)'
+                'after' => 'password_hash',
             ],
         ];
 
@@ -27,6 +28,7 @@ class AlterTenantsAddPassword extends Migration
 
     public function down(): void
     {
+        // Remove colunas adicionadas
         $this->forge->dropColumn('tenants', 'password_hash');
         $this->forge->dropColumn('tenants', 'last_login_at');
     }

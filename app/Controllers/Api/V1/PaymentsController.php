@@ -68,6 +68,20 @@ class PaymentsController extends BaseApiController
             return $this->respondError('Assinatura não pertence ao tenant/app informados', 403);
         }
 
+        // Bloquear pagamento para assinaturas canceladas
+        if (($subscription['status'] ?? null) === 'canceled') {
+            return $this->respondError('Assinatura cancelada. Crie uma nova para pagar.', 409);
+        }
+
+        // Bloquear pagamento para assinaturas incompletas expiradas
+        $expiresAt = $subscription['incomplete_expires_at'] ?? null;
+        if (($subscription['status'] ?? null) === 'incomplete' && ! empty($expiresAt)) {
+            $expiresTs = strtotime($expiresAt);
+            if ($expiresTs !== false && $expiresTs <= time()) {
+                return $this->respondError('Assinatura expirada. Crie uma nova.', 422);
+            }
+        }
+
         $status = $input['status'] ?? 'succeeded';
 
         $data = [
@@ -113,14 +127,16 @@ class PaymentsController extends BaseApiController
         try {
             $id = $model->insert($data, true);
             $payment = $model->find($id);
-            // Se pagamento concluído, ativar assinatura
-            if (in_array($status, ['succeeded', 'partial_refund', 'refunded'], true)) {
+            // Ativar assinatura APENAS quando o pagamento for succeeded
+            if ($status === 'succeeded') {
                 $this->db->table('subscriptions')
                     ->where('id', $subscriptionId)
                     ->update([
                         'status' => 'active',
+                        'is_active' => 1,
                         'current_period_start' => date('Y-m-d H:i:s'),
                         'current_period_end' => date('Y-m-d H:i:s', time() + 30 * 86400),
+                        'incomplete_expires_at' => null,
                         'updated_at' => date('Y-m-d H:i:s'),
                     ]);
             }

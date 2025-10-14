@@ -3,6 +3,8 @@
 namespace Config;
 
 use CodeIgniter\Config\Filters as BaseFilters;
+use App\Filters\ApiAuthFilter;
+use App\Filters\TenantResolverFilter;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
 use CodeIgniter\Filters\DebugToolbar;
@@ -34,9 +36,9 @@ class Filters extends BaseFilters
         'forcehttps'    => ForceHTTPS::class,
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
-        // Custom app filters
-        'apiauth'       => \App\Filters\ApiAuth::class,
-        'tenantresolver'=> \App\Filters\TenantResolver::class,
+        // custom
+        'apiauth'       => ApiAuthFilter::class,
+        'tenantresolver'=> TenantResolverFilter::class,
     ];
 
     /**

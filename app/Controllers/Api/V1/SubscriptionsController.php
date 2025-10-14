@@ -74,11 +74,24 @@ class SubscriptionsController extends BaseApiController
             return $this->respondError('Plano inválido para este app', 404);
         }
 
-        // Evitar duplicidade: assinatura ativa ou pendente para o mesmo (tenant_id, app_id)
+        // Expirar automaticamente assinaturas 'incomplete' vencidas (sem job), para permitir novo cadastro
+        $now = date('Y-m-d H:i:s');
+        $this->db->table('subscriptions')
+            ->where('tenant_id', $tenantId)
+            ->where('app_id', $appId)
+            ->where('status', 'incomplete')
+            ->where('incomplete_expires_at <=', $now)
+            ->update([
+                'status' => 'canceled',
+                'is_active' => 0,
+                'canceled_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+        // Evitar duplicidade: assinatura ativa ou pendente (inclui incomplete) para o mesmo (tenant_id, app_id)
         $existing = $this->db->table('subscriptions')
             ->where('tenant_id', $tenantId)
             ->where('app_id', $appId)
-            ->where('is_active', 1)
             ->whereIn('status', ['active', 'trialing', 'past_due', 'incomplete'])
             ->get()
             ->getRow();
@@ -95,9 +108,10 @@ class SubscriptionsController extends BaseApiController
             'quantity' => $quantity > 0 ? $quantity : 1,
             'unit_price' => $plan['price_amount'] ?? null,
             'currency' => $plan['currency'] ?? null,
-            'current_period_start' => $now,
-            'current_period_end' => date('Y-m-d H:i:s', time() + 30 * 86400),
-            'is_active' => 1,
+            'current_period_start' => null,
+            'current_period_end' => null,
+            'incomplete_expires_at' => date('Y-m-d H:i:s', time() + 48 * 3600),
+            'is_active' => 0,
             'created_at' => $now,
             'updated_at' => $now,
         ];

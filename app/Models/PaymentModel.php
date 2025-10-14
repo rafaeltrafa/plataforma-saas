@@ -6,13 +6,15 @@ use CodeIgniter\Model;
 
 class PaymentModel extends Model
 {
-    protected $table         = 'payments';
-    protected $primaryKey    = 'id';
-    protected $returnType    = 'array';
-    protected $useSoftDeletes = true;
-    protected $useTimestamps  = true;
+    protected $table            = 'payments';
+    protected $primaryKey       = 'id';
+    protected $useAutoIncrement = true;
 
-    protected $allowedFields = [
+    protected $returnType       = 'array';
+    protected $useSoftDeletes   = true;
+
+    protected $protectFields    = true;
+    protected $allowedFields    = [
         'tenant_id',
         'app_id',
         'subscription_id',
@@ -30,4 +32,10 @@ class PaymentModel extends Model
         'paid_at',
         'due_at',
     ];
+
+    protected $useTimestamps = true;
+    protected $dateFormat    = 'datetime';
+    protected $createdField  = 'created_at';
+    protected $updatedField  = 'updated_at';
+    protected $deletedField  = 'deleted_at';
 }

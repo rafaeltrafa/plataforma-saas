@@ -6,13 +6,15 @@ use CodeIgniter\Model;
 
 class TenantModel extends Model
 {
-    protected $table          = 'tenants';
-    protected $primaryKey     = 'id';
-    protected $returnType     = 'array';
-    protected $useSoftDeletes = true;
-    protected $useTimestamps  = true;
+    protected $table            = 'tenants';
+    protected $primaryKey       = 'id';
+    protected $useAutoIncrement = true;
 
-    protected $allowedFields  = [
+    protected $returnType       = 'array';
+    protected $useSoftDeletes   = true;
+
+    protected $protectFields    = true;
+    protected $allowedFields    = [
         'name',
         'slug',
         'contact_email',
@@ -22,10 +24,17 @@ class TenantModel extends Model
         'domain',
         'locale',
         'timezone',
+        'password_hash',
+        'last_login_at',
         'stripe_customer_id',
         'trial_end_at',
         'is_active',
-        'password_hash',
-        'last_login_at',
     ];
+
+    // Datas
+    protected $useTimestamps = true;
+    protected $dateFormat    = 'datetime';
+    protected $createdField  = 'created_at';
+    protected $updatedField  = 'updated_at';
+    protected $deletedField  = 'deleted_at';
 }

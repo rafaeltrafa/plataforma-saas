@@ -105,32 +105,6 @@
       ]
     },
     {
-      "name": "Subscriptions - Cancel",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
-          { "key": "Accept", "value": "application/json", "type": "text" }
-        ],
-        "url": {
-          "raw": "{{base_url}}/api/v1/subscriptions/{{subscription_id}}/cancel",
-          "host": ["{{base_url}}"],
-          "path": ["api", "v1", "subscriptions", "{{subscription_id}}", "cancel"]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
-            ]
-          }
-        }
-      ]
-    },
-    {
       "name": "Payments - Create",
       "request": {
         "method": "POST",
@@ -157,6 +131,89 @@
             "exec": [
               "pm.test('Status 200/201', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });"
             ]
+          }
+        }
+      ]
+    }
+  ,
+    {
+      "name": "Stripe Flow",
+      "description": "Fluxo ponta a ponta com Stripe: listar planos, criar sessão de checkout, listar/cancelar assinatura e listar pagamentos.",
+      "item": [
+        {
+          "name": "Plans - List (by APP_ID)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{api_prefix}}/plans?app_id={{app_id}}"
+            }
+          }
+        },
+        {
+          "name": "Checkout - Create Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{api_prefix}}/checkout/session"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price_id\": \"{{PRICE_ID}}\",\n  \"app_id\": {{app_id}},\n  \"app_plan_id\": {{app_plan_id}},\n  \"quantity\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Subscriptions - List (by APP_ID)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{api_prefix}}/subscriptions?app_id={{app_id}}"
+            }
+          }
+        },
+        {
+          "name": "Subscriptions - Cancel Now",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-App-ID", "value": "{{X_APP_ID}}" }
+            ],
+            "url": {
+              "raw": "{{api_prefix}}/subscriptions/{{SUBSCRIPTION_ID}}/cancel"
+            }
+          }
+        },
+        {
+          "name": "Payments - List (by APP_ID)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{api_prefix}}/payments?app_id={{app_id}}"
+            }
+          }
+        },
+        {
+          "name": "Webhooks - Ping",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{api_prefix}}/webhooks/ping"
+            }
           }
         }
       ]
