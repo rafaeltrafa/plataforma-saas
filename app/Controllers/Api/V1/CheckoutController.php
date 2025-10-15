@@ -47,14 +47,17 @@ class CheckoutController extends BaseApiController
             return $this->respondError('stripe_price_id ausente para o plano informado. Cadastre-o no app_plans ou envie price_id explicitamente.', 422);
         }
 
+        // BaseURL do ambiente (não hardcoded)
+        $base = rtrim((string) (env('APP_BASE_URL') ?? (config('App')->baseURL ?? '')), '/');
+        if ($base === '') {
+            return $this->respondError('Configuração de baseURL ausente. Defina app.baseURL no .env ou APP_BASE_URL.', 500);
+        }
         // URL padrão se não informadas
         if ($successUrl === '') {
-            $base = rtrim((string) (env('APP_BASE_URL') ?? ''), '/');
-            $successUrl = ($base !== '' ? $base : 'http://localhost:8080') . '/stripe/success?session_id={CHECKOUT_SESSION_ID}';
+            $successUrl = $base . '/stripe/success?session_id={CHECKOUT_SESSION_ID}';
         }
         if ($cancelUrl === '') {
-            $base = rtrim((string) (env('APP_BASE_URL') ?? ''), '/');
-            $cancelUrl = ($base !== '' ? $base : 'http://localhost:8080') . '/stripe/cancel';
+            $cancelUrl = $base . '/stripe/cancel';
         }
 
         // Verificar vínculo tenant -> app

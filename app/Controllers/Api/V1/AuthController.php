@@ -35,14 +35,29 @@ class AuthController extends BaseApiController
         // Atualiza last_login_at
         $model->update((int) $tenant['id'], ['last_login_at' => date('Y-m-d H:i:s')]);
 
-        $secret = env('JWT_SECRET') ?? getenv('JWT_SECRET') ?? 'changeme';
-        $ttl = (int) (env('JWT_TTL') ?? getenv('JWT_TTL') ?? 3600);
+        // Segredo do JWT: garantir string não vazia (evitar boolean false de .env)
+        $rawSecret = env('JWT_SECRET') ?? getenv('JWT_SECRET') ?? '';
+        $secret = is_string($rawSecret) ? trim($rawSecret) : '';
+        if ($secret === '') {
+            $secret = (string) (config('Encryption')->key ?? '');
+        }
+        if ($secret === '' || ! is_string($secret)) {
+            return $this->respondError('Configuração JWT_SECRET ausente ou inválida', 500);
+        }
 
+        // TTL: sanitizar para evitar expiração imediata (ex.: JWT_TTL=false/0)
+        $ttlRaw = env('JWT_TTL') ?? getenv('JWT_TTL') ?? 3600;
+        $ttl = is_numeric($ttlRaw) ? (int) $ttlRaw : 3600;
+        if ($ttl <= 0) {
+            $ttl = 3600;
+        }
+
+        $now = time();
         $payload = [
             'sub' => (int) $tenant['id'],
             'email' => (string) $tenant['contact_email'],
-            'iat' => time(),
-            'exp' => time() + $ttl,
+            'iat' => $now,
+            'exp' => $now + $ttl,
         ];
 
         $token = JWT::encode($payload, $secret, 'HS256');

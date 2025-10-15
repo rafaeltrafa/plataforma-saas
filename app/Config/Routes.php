@@ -10,8 +10,9 @@ $routes->get('/', 'Home::index');
 // Admin routes
 $routes->group('admin', ['namespace' => 'App\\Controllers\\Admin'], static function (RouteCollection $routes): void {
     $routes->get('', 'DashboardController::index');
-    $routes->get('rafael', 'DashboardController::rafael');
-    $routes->get('tenants', 'TenantsController::index');
+    $routes->get('dashboard', 'DashboardController::index');
+    // Suporte a barra final
+    $routes->get('dashboard/', 'DashboardController::index');
 });
 
 // API v1 routes

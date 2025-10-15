@@ -1,0 +1,564 @@
+/*!
+ * Froala Editor - Customizações para Tema Escuro
+ * Corrige o fundo branco da área de edição no tema escuro
+ * IMPORTANTE: Este arquivo deve ser carregado APÓS froala_dark_theme.min.css
+ */
+
+/* REGRAS DE MÁXIMA PRIORIDADE - SOBRESCREVE TEMA OFICIAL */
+.dark-theme.dark-theme.dark-theme .fr-toolbar,
+.dark-theme.dark-theme.dark-theme .fr-second-toolbar,
+body.dark-theme .fr-toolbar,
+body.dark-theme .fr-second-toolbar,
+html.dark-theme .fr-toolbar,
+html.dark-theme .fr-second-toolbar {
+    background: #1f2a3d !important;
+    border-color: #313e54 !important;
+    border-bottom: 1px solid #313e54 !important;
+    border-top: 1px solid #313e54 !important;
+    border-left: 1px solid #313e54 !important;
+    border-right: 1px solid #313e54 !important;
+}
+
+/* ÍCONES COM MÁXIMA ESPECIFICIDADE */
+.dark-theme.dark-theme.dark-theme .fr-toolbar *,
+.dark-theme.dark-theme.dark-theme .fr-second-toolbar *,
+body.dark-theme .fr-toolbar *,
+body.dark-theme .fr-second-toolbar *,
+html.dark-theme .fr-toolbar *,
+html.dark-theme .fr-second-toolbar *,
+[class*="dark-theme"] .fr-toolbar *,
+[class*="dark-theme"] .fr-second-toolbar * {
+    color: #e0e0e0 !important;
+    fill: #e0e0e0 !important;
+}
+
+.dark-theme.dark-theme.dark-theme .fr-toolbar *:hover,
+.dark-theme.dark-theme.dark-theme .fr-second-toolbar *:hover,
+body.dark-theme .fr-toolbar *:hover,
+body.dark-theme .fr-second-toolbar *:hover,
+[class*="dark-theme"] .fr-toolbar *:hover,
+[class*="dark-theme"] .fr-second-toolbar *:hover {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
+/* FORÇA ESPECÍFICA PARA ELEMENTOS BUTTON E I */
+.dark-theme .fr-toolbar button[class*="fr-"],
+.dark-theme .fr-toolbar i[class*="fr-"],
+.dark-theme .fr-toolbar span[class*="fr-"],
+.dark-theme .fr-toolbar .fr-command.fr-btn,
+.dark-theme .fr-toolbar .fr-btn {
+    color: #e0e0e0 !important;
+    background-color: transparent !important;
+}
+
+.dark-theme .fr-toolbar button[class*="fr-"]:hover,
+.dark-theme .fr-toolbar i[class*="fr-"]:hover,
+.dark-theme .fr-toolbar span[class*="fr-"]:hover,
+.dark-theme .fr-toolbar .fr-command.fr-btn:hover,
+.dark-theme .fr-toolbar .fr-btn:hover {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Barra de ferramentas com cor personalizada - seletores mais específicos */
+.dark-theme .fr-box .fr-toolbar,
+.dark-theme .fr-toolbar,
+.dark-theme .fr-wrapper .fr-toolbar {
+    background: #1f2a3d !important;
+    border-color: #313e54 !important;
+    border-bottom: 1px solid #313e54 !important;
+    border-top: 1px solid #313e54 !important;
+    border-left: 1px solid #313e54 !important;
+    border-right: 1px solid #313e54 !important;
+}
+
+.dark-theme .fr-box .fr-second-toolbar,
+.dark-theme .fr-second-toolbar,
+.dark-theme .fr-wrapper .fr-second-toolbar {
+    background: #1f2a3d !important;
+    border-color: #313e54 !important;
+    border-bottom: 1px solid #313e54 !important;
+    border-top: 1px solid #313e54 !important;
+    border-left: 1px solid #313e54 !important;
+    border-right: 1px solid #313e54 !important;
+}
+
+/* Corrige bordas específicas da barra de ferramentas */
+.dark-theme .fr-box .fr-toolbar.fr-top,
+.dark-theme .fr-toolbar.fr-top,
+.dark-theme .fr-wrapper .fr-toolbar.fr-top {
+    border-bottom: 1px solid #313e54 !important;
+}
+
+.dark-theme .fr-box .fr-toolbar.fr-bottom,
+.dark-theme .fr-toolbar.fr-bottom,
+.dark-theme .fr-wrapper .fr-toolbar.fr-bottom {
+    border-top: 1px solid #313e54 !important;
+}
+
+/* Força a cor da borda em todos os elementos da toolbar */
+.dark-theme .fr-toolbar *,
+.dark-theme .fr-second-toolbar * {
+    border-color: #313e54 !important;
+}
+
+/* Botões da barra de ferramentas */
+.dark-theme .fr-command.fr-btn {
+    color: #e0e0e0 !important;
+}
+
+.dark-theme .fr-command.fr-btn:hover,
+.dark-theme .fr-command.fr-btn:focus,
+.dark-theme .fr-command.fr-btn.fr-btn-hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+.dark-theme .fr-command.fr-btn.fr-active {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+}
+
+/* Ícones da barra de ferramentas - força cor clara com seletores mais específicos */
+.dark-theme .fr-toolbar .fr-command.fr-btn i,
+.dark-theme .fr-toolbar .fr-command.fr-btn svg,
+.dark-theme .fr-toolbar .fr-command.fr-btn::before,
+.dark-theme .fr-toolbar .fr-command.fr-btn::after,
+.dark-theme .fr-toolbar .fr-command i,
+.dark-theme .fr-toolbar .fr-command svg,
+.dark-theme .fr-toolbar .fr-btn i,
+.dark-theme .fr-toolbar .fr-btn svg,
+.dark-theme .fr-toolbar button i,
+.dark-theme .fr-toolbar button svg {
+    color: #e0e0e0 !important;
+    fill: #e0e0e0 !important;
+    opacity: 1 !important;
+}
+
+.dark-theme .fr-toolbar .fr-command.fr-btn:hover i,
+.dark-theme .fr-toolbar .fr-command.fr-btn:hover svg,
+.dark-theme .fr-toolbar .fr-command.fr-btn:focus i,
+.dark-theme .fr-toolbar .fr-command.fr-btn:focus svg,
+.dark-theme .fr-toolbar .fr-command.fr-btn.fr-btn-hover i,
+.dark-theme .fr-toolbar .fr-command.fr-btn.fr-btn-hover svg,
+.dark-theme .fr-toolbar .fr-command:hover i,
+.dark-theme .fr-toolbar .fr-command:hover svg,
+.dark-theme .fr-toolbar .fr-btn:hover i,
+.dark-theme .fr-toolbar .fr-btn:hover svg,
+.dark-theme .fr-toolbar button:hover i,
+.dark-theme .fr-toolbar button:hover svg {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+    opacity: 1 !important;
+}
+
+.dark-theme .fr-toolbar .fr-command.fr-btn.fr-active i,
+.dark-theme .fr-toolbar .fr-command.fr-btn.fr-active svg,
+.dark-theme .fr-toolbar .fr-command.fr-active i,
+.dark-theme .fr-toolbar .fr-command.fr-active svg,
+.dark-theme .fr-toolbar .fr-btn.fr-active i,
+.dark-theme .fr-toolbar .fr-btn.fr-active svg {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+    opacity: 1 !important;
+}
+
+/* Força cor clara em todos os elementos da toolbar */
+.dark-theme .fr-toolbar .fr-command,
+.dark-theme .fr-toolbar .fr-btn,
+.dark-theme .fr-toolbar button {
+    color: #e0e0e0 !important;
+}
+
+/* Regras adicionais para ícones específicos */
+.dark-theme .fr-toolbar [class*="fr-icon"],
+.dark-theme .fr-toolbar .fa,
+.dark-theme .fr-toolbar [class*="fa-"],
+.dark-theme .fr-toolbar .icon,
+.dark-theme .fr-toolbar [class*="icon-"],
+.dark-theme .fr-toolbar span[class*="fr-"],
+.dark-theme .fr-toolbar .fr-command span,
+.dark-theme .fr-toolbar .fr-btn span {
+    color: #e0e0e0 !important;
+    fill: #e0e0e0 !important;
+    opacity: 1 !important;
+}
+
+.dark-theme .fr-toolbar .fr-command:hover [class*="fr-icon"],
+.dark-theme .fr-toolbar .fr-command:hover .fa,
+.dark-theme .fr-toolbar .fr-command:hover [class*="fa-"],
+.dark-theme .fr-toolbar .fr-command:hover .icon,
+.dark-theme .fr-toolbar .fr-command:hover [class*="icon-"],
+.dark-theme .fr-toolbar .fr-command:hover span,
+.dark-theme .fr-toolbar .fr-btn:hover [class*="fr-icon"],
+.dark-theme .fr-toolbar .fr-btn:hover .fa,
+.dark-theme .fr-toolbar .fr-btn:hover [class*="fa-"],
+.dark-theme .fr-toolbar .fr-btn:hover .icon,
+.dark-theme .fr-toolbar .fr-btn:hover [class*="icon-"],
+.dark-theme .fr-toolbar .fr-btn:hover span {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+    opacity: 1 !important;
+}
+
+/* Dropdown e outros elementos da toolbar */
+.dark-theme .fr-dropdown-menu {
+    background: #1f2a3d !important;
+    border-color: #313e54 !important;
+}
+
+.dark-theme .fr-dropdown-menu .fr-dropdown-wrapper {
+    background: #1f2a3d !important;
+}
+
+.dark-theme .fr-dropdown-menu a.fr-command {
+    color: #e0e0e0 !important;
+}
+
+.dark-theme .fr-dropdown-menu a.fr-command:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+/* Separadores da barra de ferramentas */
+.dark-theme .fr-separator {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Regra abrangente para forçar todos os elementos da toolbar a serem claros */
+.dark-theme .fr-toolbar *,
+.dark-theme .fr-second-toolbar * {
+    color: #e0e0e0 !important;
+}
+
+.dark-theme .fr-toolbar *:hover,
+.dark-theme .fr-second-toolbar *:hover {
+    color: #ffffff !important;
+}
+
+/* Força especificamente os ícones SVG e elementos ::before/::after */
+.dark-theme .fr-toolbar * svg,
+.dark-theme .fr-toolbar * i,
+.dark-theme .fr-toolbar *::before,
+.dark-theme .fr-toolbar *::after {
+    color: #e0e0e0 !important;
+    fill: #e0e0e0 !important;
+    background-color: transparent !important;
+}
+
+.dark-theme .fr-toolbar *:hover svg,
+.dark-theme .fr-toolbar *:hover i,
+.dark-theme .fr-toolbar *:hover::before,
+.dark-theme .fr-toolbar *:hover::after {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
+/* ========================================
+   SEÇÃO DE ESPECIFICIDADE EXTREMA
+   ======================================== */
+
+/* Especificidade máxima para toolbar */
+.dark-theme:not(.light-theme):not(.other-theme) .fr-toolbar:not(.light-toolbar),
+.dark-theme:not(.light-theme):not(.other-theme) .fr-second-toolbar:not(.light-toolbar) {
+    background: #1f2a3d !important;
+    border: 1px solid #313e54 !important;
+    border-bottom: 1px solid #313e54 !important;
+}
+
+/* Especificidade máxima para ícones */
+.dark-theme:not(.light-theme) .fr-toolbar:not(.light-toolbar) *:not(.light-icon),
+.dark-theme:not(.light-theme) .fr-second-toolbar:not(.light-toolbar) *:not(.light-icon) {
+    color: #e0e0e0 !important;
+    fill: #e0e0e0 !important;
+}
+
+.dark-theme:not(.light-theme) .fr-toolbar:not(.light-toolbar) *:not(.light-icon):hover,
+.dark-theme:not(.light-theme) .fr-second-toolbar:not(.light-toolbar) *:not(.light-icon):hover {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
+/* Força o fundo escuro na área de edição */
+.dark-theme.fr-box.fr-basic .fr-wrapper {
+    background: #1a2537 !important;
+    border-color: #313e54 !important;
+}
+
+.dark-theme.fr-box.fr-basic .fr-element {
+    background: #1a2537 !important;
+    color: #e0e0e0 !important;
+}
+
+/* Corrige o fundo do documento */
+.dark-theme .fr-box.fr-document .fr-wrapper {
+    background: #1a2537 !important;
+    border-color: #313e54 !important;
+}
+
+.dark-theme .fr-box.fr-document .fr-wrapper .fr-element {
+    background: #1a2537 !important;
+    color: #e0e0e0 !important;
+}
+
+/* Bordas gerais do editor */
+.dark-theme .fr-box {
+    border-color: #313e54 !important;
+}
+
+.dark-theme .fr-wrapper {
+    border-color: #313e54 !important;
+}
+
+/* Placeholder com cor adequada para tema escuro */
+.dark-theme .fr-wrapper .fr-placeholder {
+    color: #888 !important;
+}
+
+/* Seleção de texto com cores adequadas para tema escuro */
+.dark-theme .fr-wrapper ::-moz-selection {
+    background: rgba(100, 149, 237, 0.3) !important;
+    color: #e0e0e0 !important;
+}
+
+.dark-theme .fr-wrapper ::selection {
+    background: rgba(100, 149, 237, 0.3) !important;
+    color: #e0e0e0 !important;
+}
+
+/* Links com cor adequada para tema escuro */
+.dark-theme .fr-element a {
+    color: #6495ed !important;
+}
+
+.dark-theme .fr-element a:hover {
+    color: #87ceeb !important;
+}
+
+/* Bordas e separadores */
+.dark-theme .fr-element hr {
+    background: #313e54 !important;
+    border-color: #313e54 !important;
+}
+
+/* Tabelas com tema escuro */
+.dark-theme .fr-element table {
+    border-color: #313e54 !important;
+}
+
+.dark-theme .fr-element table td,
+.dark-theme .fr-element table th {
+    border-color: #313e54 !important;
+    background: transparent !important;
+}
+
+.dark-theme .fr-element table td.fr-selected-cell,
+.dark-theme .fr-element table th.fr-selected-cell {
+    background: rgba(100, 149, 237, 0.2) !important;
+}
+
+/* Code View com tema escuro */
+.dark-theme .fr-code-view {
+    background: #1a2537 !important;
+    color: #e0e0e0 !important;
+    border-color: #313e54 !important;
+}
+
+.dark-theme .fr-code-view textarea {
+    background: #1a2537 !important;
+    color: #e0e0e0 !important;
+    border: none !important;
+    font-family: 'Courier New', Courier, monospace !important;
+}
+
+.dark-theme .fr-code-view .fr-command {
+    background: #2d3748 !important;
+    color: #e0e0e0 !important;
+    border-color: #313e54 !important;
+}
+
+.dark-theme .fr-code-view .fr-command:hover {
+    background: #4a5568 !important;
+}
+
+/* Força o tema dark em todos os elementos do Code View */
+.dark-theme .fr-view.fr-code-view,
+.dark-theme .fr-view.fr-code-view * {
+    background: #1a2537 !important;
+    color: #e0e0e0 !important;
+}
+
+.dark-theme .fr-view.fr-code-view textarea,
+.dark-theme .fr-view.fr-code-view pre {
+    background: #1a2537 !important;
+    color: #e0e0e0 !important;
+    border-color: #313e54 !important;
+}
+
+/* Scrollbar no Code View */
+.dark-theme .fr-code-view::-webkit-scrollbar {
+    width: 8px;
+    background: #2d3748 !important;
+}
+
+.dark-theme .fr-code-view::-webkit-scrollbar-thumb {
+    background: #4a5568 !important;
+    border-radius: 4px;
+}
+
+.dark-theme .fr-code-view::-webkit-scrollbar-thumb:hover {
+    background: #718096 !important;
+}
+
+/* Regras mais específicas para Code View - força tema dark */
+.dark-theme .fr-box .fr-code-view,
+.dark-theme .fr-wrapper .fr-code-view,
+.dark-theme .fr-element.fr-code-view,
+.dark-theme .fr-view.fr-code-view {
+    background-color: #1a2537 !important;
+    color: #e0e0e0 !important;
+}
+
+/* Força todos os elementos filhos do Code View */
+.dark-theme .fr-code-view *,
+.dark-theme .fr-view.fr-code-view *,
+.dark-theme .fr-element.fr-code-view * {
+    background-color: #1a2537 !important;
+    color: #e0e0e0 !important;
+}
+
+/* Textarea específica do Code View */
+.dark-theme .fr-code-view textarea,
+.dark-theme .fr-view.fr-code-view textarea,
+.dark-theme .fr-element.fr-code-view textarea {
+    background-color: #1a2537 !important;
+    background: #1a2537 !important;
+    color: #e0e0e0 !important;
+    border: 1px solid #313e54 !important;
+    outline: none !important;
+}
+
+/* Força o fundo em qualquer estado do Code View */
+.dark-theme .fr-box.fr-code-view,
+.dark-theme .fr-box .fr-code-view,
+.dark-theme .fr-wrapper.fr-code-view,
+.dark-theme .fr-wrapper.fr-code-view {
+    background: #1a2537 !important;
+    background-color: #1a2537 !important;
+}
+
+/* Regras ultra-específicas para Code View */
+.dark-theme [data-cmd="codeView"],
+.dark-theme .fr-view[data-cmd="codeView"],
+.dark-theme .fr-element[contenteditable="false"],
+.dark-theme .fr-code-view[contenteditable="false"] {
+    background: #1a2537 !important;
+    background-color: #1a2537 !important;
+    color: #e0e0e0 !important;
+}
+
+/* Força estilo em elementos com atributos específicos */
+.dark-theme textarea[data-froala],
+.dark-theme textarea.fr-code-view,
+.dark-theme pre.fr-code-view,
+.dark-theme div.fr-code-view {
+    background: #1a2537 !important;
+    background-color: #1a2537 !important;
+    color: #e0e0e0 !important;
+    border-color: #313e54 !important;
+}
+
+/* Força em qualquer elemento que contenha "code" na classe */
+.dark-theme [class*="code"],
+.dark-theme [class*="Code"] {
+    background: #1a2537 !important;
+    color: #e0e0e0 !important;
+}
+
+/* Regra de último recurso - força em qualquer textarea dentro do Froala */
+.dark-theme .fr-box textarea,
+.dark-theme .fr-wrapper textarea,
+.dark-theme .fr-element textarea {
+    background: #1a2537 !important;
+    background-color: #1a2537 !important;
+    color: #e0e0e0 !important;
+}
+
+/* REGRAS ULTRA-ESPECÍFICAS PARA CODE VIEW - FORÇA MÁXIMA */
+body.dark-theme .fr-box.fr-basic .fr-wrapper .fr-element[contenteditable="false"],
+body.dark-theme .fr-box.fr-basic .fr-wrapper .fr-element[contenteditable="false"] *,
+body.dark-theme .fr-box.fr-basic .fr-wrapper textarea,
+body.dark-theme .fr-box.fr-basic .fr-wrapper textarea * {
+    background: #1a2537 !important;
+    background-color: #1a2537 !important;
+    color: #e0e0e0 !important;
+    border-color: #313e54 !important;
+}
+
+/* Força em elementos com data-froala */
+body.dark-theme [data-froala] textarea,
+body.dark-theme [data-froala] pre,
+body.dark-theme [data-froala] code,
+body.dark-theme [data-froala] [contenteditable="false"] {
+    background: #1a2537 !important;
+    background-color: #1a2537 !important;
+    color: #e0e0e0 !important;
+}
+
+/* Força em qualquer elemento que possa ser o Code View */
+body.dark-theme textarea[style*="background"],
+body.dark-theme pre[style*="background"],
+body.dark-theme div[style*="background"][contenteditable="false"] {
+    background: #1a2537 !important;
+    background-color: #1a2537 !important;
+    color: #e0e0e0 !important;
+}
+
+/* Força usando especificidade máxima */
+html body.dark-theme .fr-box .fr-wrapper .fr-element,
+html body.dark-theme .fr-box .fr-wrapper textarea,
+html body.dark-theme .fr-box .fr-wrapper pre {
+    background: #1a2537 !important;
+    background-color: #1a2537 !important;
+    color: #e0e0e0 !important;
+}
+
+/* ===== TEMA LIGHT ===== */
+/* Estilos para o tema light (padrão) */
+.light-theme .fr-wrapper,
+.light-theme.fr-wrapper {
+  background: #ffffff !important;
+  color: #333333 !important;
+  border-color: #ddd !important;
+}
+
+.light-theme .fr-element {
+  background: #ffffff !important;
+  color: #333333 !important;
+}
+
+.light-theme .fr-toolbar {
+  background: #f8f9fa !important;
+  border-color: #ddd !important;
+}
+
+.light-theme .fr-command.fr-btn {
+  color: #333333 !important;
+  background: transparent !important;
+}
+
+.light-theme .fr-command.fr-btn:hover {
+  background: #e9ecef !important;
+}
+
+/* Code View - Tema Light */
+.light-theme .fr-code-view,
+.light-theme .fr-code-view *,
+.light-theme [contenteditable="false"],
+.light-theme textarea[data-froala] {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #333333 !important;
+  border-color: #ddd !important;
+}

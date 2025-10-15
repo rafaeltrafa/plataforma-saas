@@ -78,7 +78,16 @@ class BaseApiController extends \App\Controllers\BaseController
         if ($token === '') {
             return null;
         }
-        $secret = env('JWT_SECRET') ?? getenv('JWT_SECRET') ?? 'changeme';
+        // Segredo do JWT: garantir string não vazia (evitar boolean false de .env)
+        $rawSecret = env('JWT_SECRET') ?? getenv('JWT_SECRET') ?? '';
+        $secret = is_string($rawSecret) ? trim($rawSecret) : '';
+        if ($secret === '') {
+            $secret = (string) (config('Encryption')->key ?? '');
+        }
+        if ($secret === '' || ! is_string($secret)) {
+            log_message('error', 'JWT_SECRET ausente ou inválido ao decodificar token');
+            return null;
+        }
         try {
             // decode retorna stdClass; converter para array
             $decoded = JWT::decode($token, new Key($secret, 'HS256'));
