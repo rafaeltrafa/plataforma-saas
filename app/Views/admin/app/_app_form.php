@@ -17,6 +17,6 @@
     </div>
     <div class="d-flex justify-content-between">
 
-        <button type="submit" class="btn bg-primary-subtle text-primary">Cadastrar App</button>
+        <button type="submit" class="btn bg-primary">Cadastrar App</button>
     </div>
 </form>

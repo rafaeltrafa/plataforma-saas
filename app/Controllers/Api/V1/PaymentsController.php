@@ -21,6 +21,7 @@ class PaymentsController extends BaseApiController
             return $this->respondError('Unauthorized', 401);
         }
         $tenantIdFromToken = (int) $payload['sub'];
+        $tokenAppId = (int) ($payload['app'] ?? 0);
 
         $input = $this->getInputPayload();
 
@@ -54,6 +55,10 @@ class PaymentsController extends BaseApiController
         }
 
         $appId = (int) $input['app_id'];
+        if ($tokenAppId > 0 && $tokenAppId !== $appId) {
+            return $this->respondError('Token não pertence ao app informado', 403);
+        }
+
         $subscriptionId = (int) $input['subscription_id'];
 
         // Validar assinatura vinculada ao tenant/app
@@ -129,13 +134,43 @@ class PaymentsController extends BaseApiController
             $payment = $model->find($id);
             // Ativar assinatura APENAS quando o pagamento for succeeded
             if ($status === 'succeeded') {
+                // Calcular período com base no billing_interval do plano
+                $periodStart = date('Y-m-d H:i:s');
+                $periodEnd = null;
+                $plan = null;
+                try {
+                    $plan = $this->db->table('app_plans')
+                        ->select('billing_interval')
+                        ->where('id', (int) ($subscription['app_plan_id'] ?? 0))
+                        ->get()
+                        ->getRowArray();
+                } catch (\Throwable $e) {
+                    // mantém fallback abaixo
+                }
+                $interval = (string) ($plan['billing_interval'] ?? '');
+                switch ($interval) {
+                    case 'monthly':
+                        $periodEnd = date('Y-m-d H:i:s', strtotime('+1 month'));
+                        break;
+                    case 'quarterly':
+                        $periodEnd = date('Y-m-d H:i:s', strtotime('+3 months'));
+                        break;
+                    case 'yearly':
+                        $periodEnd = date('Y-m-d H:i:s', strtotime('+1 year'));
+                        break;
+                    default:
+                        // Fallback seguro para casos não mapeados
+                        $periodEnd = date('Y-m-d H:i:s', time() + 30 * 86400);
+                        break;
+                }
+
                 $this->db->table('subscriptions')
                     ->where('id', $subscriptionId)
                     ->update([
                         'status' => 'active',
                         'is_active' => 1,
-                        'current_period_start' => date('Y-m-d H:i:s'),
-                        'current_period_end' => date('Y-m-d H:i:s', time() + 30 * 86400),
+                        'current_period_start' => $periodStart,
+                        'current_period_end' => $periodEnd,
                         'incomplete_expires_at' => null,
                         'updated_at' => date('Y-m-d H:i:s'),
                     ]);

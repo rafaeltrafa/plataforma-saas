@@ -14,6 +14,7 @@ class CheckoutController extends BaseApiController
             return $this->respondError('Unauthorized', 401);
         }
         $tenantId = (int) $payload['sub'];
+        $tokenAppId = (int) ($payload['app'] ?? 0);
 
         $input = $this->getInputPayload();
 
@@ -27,6 +28,9 @@ class CheckoutController extends BaseApiController
         // Regras de validação mínimas
         if ($appId <= 0 || $appPlanId <= 0) {
             return $this->respondError('Parâmetros obrigatórios: app_id, app_plan_id', 422);
+        }
+        if ($tokenAppId > 0 && $tokenAppId !== $appId) {
+            return $this->respondError('Token não pertence ao app informado', 403);
         }
 
         // Validar que o plano pertence ao app e está ativo
@@ -125,7 +129,17 @@ class CheckoutController extends BaseApiController
                 ];
             } else {
                 $params['mode'] = 'payment';
-                // Em 'payment' não enviar subscription_data
+                // Em 'payment', propagar metadata para o PaymentIntent
+                $params['payment_intent_data'] = [
+                    'metadata' => [
+                        'tenant_id' => (string) $tenantId,
+                        'app_id' => (string) $appId,
+                        'app_plan_id' => (string) $appPlanId,
+                        'price_id' => $priceId,
+                    ],
+                ];
+                // Garantir criação de Customer para mapear stripe_customer_id no webhook
+                $params['customer_creation'] = 'always';
             }
 
             if (is_string($stripeCustomerId) && trim($stripeCustomerId) !== '') {

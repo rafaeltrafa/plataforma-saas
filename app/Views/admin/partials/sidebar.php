@@ -138,9 +138,9 @@
                             <span class="hide-menu">Clientes</span>
                         </li>
                         <li class="sidebar-item">
-                            <a class="sidebar-link <?php echo ($sidebarActive == 'clientes') ? 'sidebar-link active' : ''; ?>" href="<?= site_url('admin/clientes') ?>" id="get-url" aria-expanded="false">
+                            <a class="sidebar-link <?php echo ($sidebarActive == 'clientes') ? 'sidebar-link active' : ''; ?>" href="<?= site_url('admin/tenant') ?>" id="get-url" aria-expanded="false">
                                 <iconify-icon icon="mdi:account-multiple-outline"></iconify-icon>
-                                <span class="hide-menu">Gerenciar</span>
+                                <span class="hide-menu">Assinaturas</span>
                             </a>
                         </li>
                     </ul>

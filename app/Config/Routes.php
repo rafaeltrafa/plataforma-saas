@@ -13,6 +13,7 @@ $routes->group('admin', ['namespace' => 'App\\Controllers\\Admin'], static funct
     $routes->get('dashboard', 'DashboardController::index');
     // Suporte a barra final
     $routes->get('dashboard/', 'DashboardController::index');
+    $routes->get('tenant/', 'TenantController::index');
     $routes->get('apps/', 'AppsController::index');
     // Buscar planos do app (para modal de assinaturas)
     $routes->get('apps/(:num)/plans', 'AppsController::plans/$1');
@@ -75,6 +76,9 @@ $routes->group('api', ['namespace' => 'App\\Controllers\\Api'], static function 
         $routes->post('auth/login', 'AuthController::login', ['filter' => 'tenantresolver']);
 
         // Protected routes (JWT + tenantresolver)
+        $routes->patch('auth/password', 'AuthController::changePassword', ['filters' => ['apiauth', 'tenantresolver']]);
+        $routes->post('auth/password', 'AuthController::changePassword', ['filters' => ['apiauth', 'tenantresolver']]);
+
         $routes->get('tenants', 'TenantsController::index', ['filters' => ['apiauth', 'tenantresolver']]);
         $routes->post('tenants', 'TenantsController::create', ['filters' => ['apiauth', 'tenantresolver']]);
         $routes->get('plans', 'PlansController::index', ['filters' => ['apiauth', 'tenantresolver']]);

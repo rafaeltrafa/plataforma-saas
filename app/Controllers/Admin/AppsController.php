@@ -165,7 +165,7 @@ class AppsController extends BaseController
                 Stripe::setApiKey($secret);
                 // Cria o Product na Stripe
                 $product = StripeProduct::create([
-                    'name' => $name . ' | ' . (string) ($app['name'] ?? 'App'),
+                    'name' => '#' . (string) $appId . ' | ' . (string) ($app['name'] ?? 'App') . ' | ' . $name,
                     'type' => 'service',
                     'metadata' => [
                         'app_id' => (string) $appId,
@@ -292,7 +292,7 @@ class AppsController extends BaseController
             Stripe::setApiKey($secret);
             // Cria o Product
             $product = StripeProduct::create([
-                'name' => $name . ' | ' . (string) ($app['name'] ?? 'App'),
+                'name' => (string) $appId . ' | ' . (string) ($app['name'] ?? 'App') . ' | ' . $name,
                 'type' => 'service',
                 'metadata' => [
                     'app_id' => (string) $appId,

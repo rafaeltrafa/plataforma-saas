@@ -4,13 +4,17 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateUsers extends Migration
+class CreateAppsTable extends Migration
 {
-    public function up(): void
+    protected $group = 'default';
+    protected $DBGroup = 'default';
+
+    public function up()
     {
         $this->forge->addField([
             'id' => [
                 'type' => 'INT',
+                'constraint' => 11,
                 'unsigned' => true,
                 'auto_increment' => true,
             ],
@@ -18,27 +22,22 @@ class CreateUsers extends Migration
                 'type' => 'VARCHAR',
                 'constraint' => 150,
             ],
-            'email' => [
+            'slug' => [
                 'type' => 'VARCHAR',
-                'constraint' => 254,
+                'constraint' => 150,
             ],
-            'password_hash' => [
+            'description' => [
+                'type' => 'TEXT',
+                'null' => true,
+            ],
+            'app_key' => [
                 'type' => 'VARCHAR',
-                'constraint' => 255,
-            ],
-            'role_level' => [
-                'type' => 'SMALLINT',
-                'unsigned' => true,
-                'default' => 10,
+                'constraint' => 64,
             ],
             'is_active' => [
                 'type' => 'TINYINT',
                 'constraint' => 1,
                 'default' => 1,
-            ],
-            'last_login_at' => [
-                'type' => 'DATETIME',
-                'null' => true,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -55,21 +54,17 @@ class CreateUsers extends Migration
         ]);
 
         $this->forge->addKey('id', true);
-        $this->forge->addKey('email', false, true);
-        $this->forge->addKey('role_level');
+        $this->forge->addKey('slug', false, true);
+        $this->forge->addKey('app_key', false, true);
         $this->forge->addKey('is_active');
 
-        $attributes = [
-            'ENGINE' => 'InnoDB',
-            'DEFAULT CHARSET' => 'utf8mb4',
-            'COLLATE' => 'utf8mb4_unicode_ci',
-        ];
-
-        $this->forge->createTable('users', true, $attributes);
+        // IF NOT EXISTS
+        $this->forge->createTable('apps', true);
     }
 
-    public function down(): void
+    public function down()
     {
-        $this->forge->dropTable('users', true);
+        // IF EXISTS
+        $this->forge->dropTable('apps', true);
     }
 }

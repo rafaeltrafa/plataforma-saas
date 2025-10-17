@@ -13,9 +13,13 @@ class SubscriptionsController extends BaseApiController
         }
 
         $tenantId = (int) $payload['sub'];
+        $tokenAppId = (int) ($payload['app'] ?? 0);
 
         // app_id pode vir por query ?app_id= ou header X-App-ID
         $appId = (int) ($this->request->getGet('app_id') ?? $this->request->getHeaderLine('X-App-ID') ?? 0);
+        if ($tokenAppId > 0 && $appId > 0 && $tokenAppId !== $appId) {
+            return $this->respondError('Token não pertence ao app informado', 403);
+        }
 
         $builder = $this->db->table('subscriptions')->where('tenant_id', $tenantId);
         if ($appId > 0) {
@@ -39,6 +43,7 @@ class SubscriptionsController extends BaseApiController
             return $this->respondError('Unauthorized', 401);
         }
         $tenantId = (int) $payload['sub'];
+        $tokenAppId = (int) ($payload['app'] ?? 0);
 
         $input = $this->getInputPayload();
 
@@ -56,6 +61,10 @@ class SubscriptionsController extends BaseApiController
         $appPlanId = (int) $input['app_plan_id'];
         $quantity = (int) ($input['quantity'] ?? 1);
 
+        if ($tokenAppId > 0 && $tokenAppId !== $appId) {
+            return $this->respondError('Token não pertence ao app informado', 403);
+        }
+
         // Verificar vínculo tenant -> app
         $tenantApp = $this->db->table('tenant_apps')
             ->where(['tenant_id' => $tenantId, 'app_id' => $appId])
@@ -72,6 +81,14 @@ class SubscriptionsController extends BaseApiController
             ->getRowArray();
         if (! $plan) {
             return $this->respondError('Plano inválido para este app', 404);
+        }
+
+        // Bloquear criação para planos one_time/lifetime
+        $billingInterval = (string) ($plan['billing_interval'] ?? '');
+        if (in_array($billingInterval, ['one_time', 'lifetime'], true)) {
+            return $this->respondError('Plano de cobrança única não permite assinatura', 422, [
+                'billing_interval' => $billingInterval,
+            ]);
         }
 
         // Expirar automaticamente assinaturas 'incomplete' vencidas (sem job), para permitir novo cadastro

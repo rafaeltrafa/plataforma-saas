@@ -4,23 +4,27 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateRoleLevels extends Migration
+class CreateRoleLevelsTable extends Migration
 {
-    public function up(): void
+    protected $group = 'default';
+    protected $DBGroup = 'default';
+
+    public function up()
     {
         $this->forge->addField([
             'id' => [
                 'type' => 'INT',
+                'constraint' => 11,
                 'unsigned' => true,
                 'auto_increment' => true,
             ],
             'name' => [
                 'type' => 'VARCHAR',
-                'constraint' => 100,
+                'constraint' => 50,
             ],
             'level' => [
-                'type' => 'SMALLINT',
-                'unsigned' => true,
+                'type' => 'INT',
+                'constraint' => 11,
             ],
             'description' => [
                 'type' => 'VARCHAR',
@@ -45,28 +49,19 @@ class CreateRoleLevels extends Migration
                 'type' => 'DATETIME',
                 'null' => true,
             ],
-            'deleted_at' => [
-                'type' => 'DATETIME',
-                'null' => true,
-            ],
         ]);
 
         $this->forge->addKey('id', true);
-        $this->forge->addKey('level', false, true); // UNIQUE(level)
+        $this->forge->addKey('level', false, true);
         $this->forge->addKey('is_active');
-        $this->forge->addKey('is_default');
 
-        $attributes = [
-            'ENGINE' => 'InnoDB',
-            'DEFAULT CHARSET' => 'utf8mb4',
-            'COLLATE' => 'utf8mb4_unicode_ci',
-        ];
-
-        $this->forge->createTable('role_levels', true, $attributes);
+        // IF NOT EXISTS
+        $this->forge->createTable('role_levels', true);
     }
 
-    public function down(): void
+    public function down()
     {
+        // IF EXISTS
         $this->forge->dropTable('role_levels', true);
     }
 }

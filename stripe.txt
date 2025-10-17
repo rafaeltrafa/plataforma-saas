@@ -7,4 +7,4 @@
 https://dashboard.stripe.com/
 
 
-.\stripe.exe listen --events checkout.session.completed,invoice.payment_succeeded,invoice.payment_failed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted --forward-to http://localhost:8080/index.php/api/v1/webhooks/stripe
+.\stripe.exe listen --events checkout.session.completed,payment_intent.succeeded,invoice.payment_succeeded,invoice.payment_failed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted --forward-to http://localhost:8080/api/v1/webhooks/stripe

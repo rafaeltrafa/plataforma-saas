@@ -114,6 +114,15 @@ class TenantsController extends BaseApiController
                         'is_enabled'   => 1,
                         'created_at'   => $now,
                         'updated_at'   => $now,
+                        'credential_hash' => ! empty($input['password']) ? password_hash((string) $input['password'], PASSWORD_DEFAULT) : null,
+                        'credential_updated_at' => ! empty($input['password']) ? $now : null,
+                    ]);
+                } else if (! empty($input['password'])) {
+                    $hash = password_hash((string) $input['password'], PASSWORD_DEFAULT);
+                    $tenantApps->where(['tenant_id' => $tenantId, 'app_id' => $appId])->update([
+                        'credential_hash' => $hash,
+                        'credential_updated_at' => $now,
+                        'updated_at' => $now,
                     ]);
                 }
             }
@@ -192,6 +201,15 @@ class TenantsController extends BaseApiController
                     'is_enabled'   => 1,
                     'created_at'   => $now,
                     'updated_at'   => $now,
+                    'credential_hash' => ! empty($input['password']) ? password_hash((string) $input['password'], PASSWORD_DEFAULT) : null,
+                    'credential_updated_at' => ! empty($input['password']) ? $now : null,
+                ]);
+            } else if (! empty($input['password'])) {
+                $hash = password_hash((string) $input['password'], PASSWORD_DEFAULT);
+                $tenantApps->where(['tenant_id' => (int) $id, 'app_id' => $appId])->update([
+                    'credential_hash' => $hash,
+                    'credential_updated_at' => $now,
+                    'updated_at' => $now,
                 ]);
             }
         }

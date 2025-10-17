@@ -535,6 +535,40 @@ class WebhooksController extends BaseController
                         $priceIdMeta = (string) ($md['price_id'] ?? '');
 
                         log_message('info', 'Subscription retrieved for invoice: stripe_sub=' . $stripeSubId . ' status=' . $status . ' tenant_id=' . $tenantId . ' app_id=' . $appId . ' app_plan_id=' . $appPlanId . ' price_id_meta=' . $priceIdMeta);
+                        // Fallback períodos: se período vier nulo, tentar reconsultar a Subscription e depois invoice.lines
+                        if (($periodStartDt === null || $periodEndDt === null) && $stripeSubId !== '') {
+                            try {
+                                $subCheck = $stripe->subscriptions->retrieve($stripeSubId);
+                                $ps = isset($subCheck->current_period_start) && is_int($subCheck->current_period_start) ? (int) $subCheck->current_period_start : null;
+                                $pe = isset($subCheck->current_period_end) && is_int($subCheck->current_period_end) ? (int) $subCheck->current_period_end : null;
+                                if ($ps !== null) {
+                                    $periodStartDt = date('Y-m-d H:i:s', $ps);
+                                }
+                                if ($pe !== null) {
+                                    $periodEndDt = date('Y-m-d H:i:s', $pe);
+                                }
+                            } catch (\Throwable $e) {
+                                log_message('warning', 'invoice.payment_succeeded: reconsulta de Subscription para períodos falhou: ' . $e->getMessage());
+                            }
+                        }
+                        if (($periodStartDt === null || $periodEndDt === null) && isset($inv->id)) {
+                            try {
+                                $invLines = $stripe->invoices->retrieve((string) $inv->id, ['expand' => ['lines.data']]);
+                                if (isset($invLines->lines) && isset($invLines->lines->data[0])) {
+                                    $linePeriod = $invLines->lines->data[0]->period ?? null;
+                                    $ps = is_object($linePeriod) && isset($linePeriod->start) ? $linePeriod->start : null;
+                                    $pe = is_object($linePeriod) && isset($linePeriod->end) ? $linePeriod->end : null;
+                                    if (is_int($ps)) {
+                                        $periodStartDt = date('Y-m-d H:i:s', $ps);
+                                    }
+                                    if (is_int($pe)) {
+                                        $periodEndDt = date('Y-m-d H:i:s', $pe);
+                                    }
+                                }
+                            } catch (\Throwable $e) {
+                                log_message('warning', 'invoice.payment_succeeded: fallback períodos via invoice.lines falhou: ' . $e->getMessage());
+                            }
+                        }
                     }
 
                     if ($tenantId <= 0 || $appId <= 0) {
@@ -577,22 +611,57 @@ class WebhooksController extends BaseController
                                 $amountPaid = isset($inv->amount_paid) && is_int($inv->amount_paid)
                                     ? number_format($inv->amount_paid / 100, 2, '.', '')
                                     : ($unitPrice ?? null);
+
+                                // Backfill via API: obter dados do PaymentIntent (charge/receipt/amount/currency)
+                                $piId = isset($inv->payment_intent) ? (string) $inv->payment_intent : '';
+                                $receiptUrlCh = null;
+                                $chargeIdCh = null;
+                                $paidAtCh = null;
+                                $amountFromPi = null;
+                                $currencyFromPi = null;
+                                if ($piId !== '') {
+                                    try {
+                                        $piFresh = $stripe->paymentIntents->retrieve($piId, ['expand' => ['charges.data']]);
+                                        if (isset($piFresh->charges) && isset($piFresh->charges->data[0])) {
+                                            $ch = $piFresh->charges->data[0];
+                                            $receiptUrlCh = isset($ch->receipt_url) ? (string) $ch->receipt_url : null;
+                                            $chargeIdCh = isset($ch->id) ? (string) $ch->id : null;
+                                            if (isset($ch->created)) {
+                                                $paidAtCh = date('Y-m-d H:i:s', (int) $ch->created);
+                                            }
+                                        }
+                                        if (isset($piFresh->amount) && is_int($piFresh->amount)) {
+                                            $amountFromPi = number_format($piFresh->amount / 100, 2, '.', '');
+                                        }
+                                        if (isset($piFresh->currency) && is_string($piFresh->currency)) {
+                                            $currencyFromPi = strtoupper((string) $piFresh->currency);
+                                        }
+                                    } catch (\Throwable $e) {
+                                        log_message('warning', 'invoice.payment_succeeded: falha ao recuperar PaymentIntent para backfill: ' . $e->getMessage());
+                                    }
+                                }
+                                $receiptUrlFinal = $receiptUrlCh ?: (isset($inv->hosted_invoice_url) ? (string) $inv->hosted_invoice_url : null);
+                                $chargeIdFinal = $chargeIdCh ?: (isset($inv->charge) ? (string) $inv->charge : null);
+                                $amountFinal = $amountPaid !== null ? $amountPaid : $amountFromPi;
+                                $currencyFinal = (string) ($inv->currency ?? $currency ?? ($currencyFromPi ?? ''));
+                                $paidAtFinal = $paidAtCh ?: date('Y-m-d H:i:s');
+
                                 $payData = [
                                     'tenant_id' => $tenantId,
                                     'app_id' => $appId,
                                     'subscription_id' => (int) $localSubId,
-                                    'amount' => $amountPaid !== null ? (float) $amountPaid : null,
-                                    'currency' => (string) ($inv->currency ?? $currency ?? ''),
+                                    'amount' => $amountFinal !== null ? (float) $amountFinal : null,
+                                    'currency' => $currencyFinal,
                                     'status' => 'succeeded',
                                     'payment_method' => null,
                                     'provider' => 'stripe',
-                                    'stripe_payment_intent_id' => isset($inv->payment_intent) ? (string) $inv->payment_intent : null,
-                                    'stripe_charge_id' => isset($inv->charge) ? (string) $inv->charge : null,
+                                    'stripe_payment_intent_id' => $piId ?: null,
+                                    'stripe_charge_id' => $chargeIdFinal,
                                     'stripe_invoice_id' => isset($inv->id) ? (string) $inv->id : null,
-                                    'receipt_url' => isset($inv->hosted_invoice_url) ? (string) $inv->hosted_invoice_url : null,
+                                    'receipt_url' => $receiptUrlFinal,
                                     'error_code' => null,
                                     'error_message' => null,
-                                    'paid_at' => date('Y-m-d H:i:s'),
+                                    'paid_at' => $paidAtFinal,
                                     'due_at' => null,
                                 ];
 
@@ -617,11 +686,59 @@ class WebhooksController extends BaseController
                                         $paymentId = (int) $this->db->insertID();
                                         log_message('info', 'Payment registrado via invoice.payment_succeeded (fallback). payment_id=' . $paymentId . ' tenant_id=' . $tenantId . ' app_id=' . $appId . ' subscription_id=' . (int) $localSubId . ' invoice=' . ($payData['stripe_invoice_id'] ?? ''));
                                     } else {
-                                        log_message('info', 'Payment idempotente (invoice já registrada - fallback) invoice=' . ($payData['stripe_invoice_id'] ?? '') . ' tenant_id=' . $tenantId . ' app_id=' . $appId);
+                                log_message('info', 'Payment idempotente (invoice já registrada - fallback) invoice=' . ($payData['stripe_invoice_id'] ?? '') . ' tenant_id=' . $tenantId . ' app_id=' . $appId);
+                                // Atualizar campos faltantes no registro existente (backfill)
+                                try {
+                                    $exists = $existsByInv;
+                                    $update = [];
+                                    if (empty($exists['stripe_charge_id']) && ! empty($chargeIdFinal)) {
+                                        $update['stripe_charge_id'] = $chargeIdFinal;
                                     }
-                                } else {
-                                    log_message('info', 'Payment idempotente (payment_intent já registrado - fallback) pi=' . ($payData['stripe_payment_intent_id'] ?? ''));
+                                    if (empty($exists['receipt_url']) && ! empty($receiptUrlFinal)) {
+                                        $update['receipt_url'] = $receiptUrlFinal;
+                                    }
+                                    if ((empty($exists['amount']) || (float) $exists['amount'] === 0.0) && $amountFinal !== null) {
+                                        $update['amount'] = (float) $amountFinal;
+                                    }
+                                    if (empty($exists['currency']) && ! empty($currencyFinal)) {
+                                        $update['currency'] = $currencyFinal;
+                                    }
+                                    if (! empty($update)) {
+                                        $update['updated_at'] = date('Y-m-d H:i:s');
+                                        $this->db->table('payments')->where('id', (int) $exists['id'])->update($update);
+                                        log_message('info', 'Payment idempotente atualizado (fallback) payment_id=' . (int) $exists['id']);
+                                    }
+                                } catch (\Throwable $e) {
+                                    log_message('warning', 'invoice.payment_succeeded: falha ao atualizar payment idempotente (fallback): ' . $e->getMessage());
                                 }
+                            }
+                                } else {
+                            log_message('info', 'Payment idempotente (payment_intent já registrado - fallback) pi=' . ($payData['stripe_payment_intent_id'] ?? ''));
+                            // Atualizar campos faltantes no registro existente (backfill)
+                            try {
+                                $exists = $existsByPi;
+                                $update = [];
+                                if (empty($exists['stripe_charge_id']) && ! empty($chargeIdFinal)) {
+                                    $update['stripe_charge_id'] = $chargeIdFinal;
+                                }
+                                if (empty($exists['receipt_url']) && ! empty($receiptUrlFinal)) {
+                                    $update['receipt_url'] = $receiptUrlFinal;
+                                }
+                                if ((empty($exists['amount']) || (float) $exists['amount'] === 0.0) && $amountFinal !== null) {
+                                    $update['amount'] = (float) $amountFinal;
+                                }
+                                if (empty($exists['currency']) && ! empty($currencyFinal)) {
+                                    $update['currency'] = $currencyFinal;
+                                }
+                                if (! empty($update)) {
+                                    $update['updated_at'] = date('Y-m-d H:i:s');
+                                    $this->db->table('payments')->where('id', (int) $exists['id'])->update($update);
+                                    log_message('info', 'Payment idempotente atualizado (fallback) payment_id=' . (int) $exists['id']);
+                                }
+                            } catch (\Throwable $e) {
+                                log_message('warning', 'invoice.payment_succeeded: falha ao atualizar payment idempotente (fallback): ' . $e->getMessage());
+                            }
+                        }
                             } else {
                                 log_message('info', 'Payment não registrado: assinatura/local tenant/app não resolvidos no fallback.');
                             }
@@ -687,26 +804,61 @@ class WebhooksController extends BaseController
                     try {
                         if ($localSubId !== null) {
                             $amountPaid = isset($inv->amount_paid) && is_int($inv->amount_paid)
-                                ? number_format($inv->amount_paid / 100, 2, '.', '')
-                                : ($unitPrice ?? null);
-                            $payData = [
-                                'tenant_id' => $tenantId,
-                                'app_id' => $appId,
-                                'subscription_id' => (int) $localSubId,
-                                'amount' => $amountPaid !== null ? (float) $amountPaid : null,
-                                'currency' => (string) ($inv->currency ?? $currency ?? ''),
-                                'status' => 'succeeded',
-                                'payment_method' => null,
-                                'provider' => 'stripe',
-                                'stripe_payment_intent_id' => isset($inv->payment_intent) ? (string) $inv->payment_intent : null,
-                                'stripe_charge_id' => isset($inv->charge) ? (string) $inv->charge : null,
-                                'stripe_invoice_id' => isset($inv->id) ? (string) $inv->id : null,
-                                'receipt_url' => isset($inv->hosted_invoice_url) ? (string) $inv->hosted_invoice_url : null,
-                                'error_code' => null,
-                                'error_message' => null,
-                                'paid_at' => date('Y-m-d H:i:s'),
-                                'due_at' => null,
-                            ];
+                        ? number_format($inv->amount_paid / 100, 2, '.', '')
+                        : ($unitPrice ?? null);
+
+                    // Backfill via API: obter dados do PaymentIntent (charge/receipt/amount/currency)
+                    $piId = isset($inv->payment_intent) ? (string) $inv->payment_intent : '';
+                    $receiptUrlCh = null;
+                    $chargeIdCh = null;
+                    $paidAtCh = null;
+                    $amountFromPi = null;
+                    $currencyFromPi = null;
+                    if ($piId !== '') {
+                        try {
+                            $piFresh = $stripe->paymentIntents->retrieve($piId, ['expand' => ['charges.data']]);
+                            if (isset($piFresh->charges) && isset($piFresh->charges->data[0])) {
+                                $ch = $piFresh->charges->data[0];
+                                $receiptUrlCh = isset($ch->receipt_url) ? (string) $ch->receipt_url : null;
+                                $chargeIdCh = isset($ch->id) ? (string) $ch->id : null;
+                                if (isset($ch->created)) {
+                                    $paidAtCh = date('Y-m-d H:i:s', (int) $ch->created);
+                                }
+                            }
+                            if (isset($piFresh->amount) && is_int($piFresh->amount)) {
+                                $amountFromPi = number_format($piFresh->amount / 100, 2, '.', '');
+                            }
+                            if (isset($piFresh->currency) && is_string($piFresh->currency)) {
+                                $currencyFromPi = strtoupper((string) $piFresh->currency);
+                            }
+                        } catch (\Throwable $e) {
+                            log_message('warning', 'invoice.payment_succeeded: falha ao recuperar PaymentIntent para backfill: ' . $e->getMessage());
+                        }
+                    }
+                    $receiptUrlFinal = $receiptUrlCh ?: (isset($inv->hosted_invoice_url) ? (string) $inv->hosted_invoice_url : null);
+                    $chargeIdFinal = $chargeIdCh ?: (isset($inv->charge) ? (string) $inv->charge : null);
+                    $amountFinal = $amountPaid !== null ? $amountPaid : $amountFromPi;
+                    $currencyFinal = (string) ($inv->currency ?? $currency ?? ($currencyFromPi ?? ''));
+                    $paidAtFinal = $paidAtCh ?: date('Y-m-d H:i:s');
+
+                    $payData = [
+                        'tenant_id' => $tenantId,
+                        'app_id' => $appId,
+                        'subscription_id' => (int) $localSubId,
+                        'amount' => $amountFinal !== null ? (float) $amountFinal : null,
+                        'currency' => $currencyFinal,
+                        'status' => 'succeeded',
+                        'payment_method' => null,
+                        'provider' => 'stripe',
+                        'stripe_payment_intent_id' => $piId ?: null,
+                        'stripe_charge_id' => $chargeIdFinal,
+                        'stripe_invoice_id' => isset($inv->id) ? (string) $inv->id : null,
+                        'receipt_url' => $receiptUrlFinal,
+                        'error_code' => null,
+                        'error_message' => null,
+                        'paid_at' => $paidAtFinal,
+                        'due_at' => null,
+                    ];
 
                             $existsByPi = null;
                             if (! empty($payData['stripe_payment_intent_id'])) {
@@ -729,11 +881,59 @@ class WebhooksController extends BaseController
                                     $paymentId = (int) $this->db->insertID();
                                     log_message('info', 'Payment registrado via invoice.payment_succeeded. payment_id=' . $paymentId . ' tenant_id=' . $tenantId . ' app_id=' . $appId . ' subscription_id=' . (int) $localSubId . ' invoice=' . ($payData['stripe_invoice_id'] ?? ''));
                                 } else {
-                                    log_message('info', 'Payment idempotente (invoice já registrada) invoice=' . ($payData['stripe_invoice_id'] ?? '') . ' tenant_id=' . $tenantId . ' app_id=' . $appId);
+                            log_message('info', 'Payment idempotente (invoice já registrada) invoice=' . ($payData['stripe_invoice_id'] ?? '') . ' tenant_id=' . $tenantId . ' app_id=' . $appId);
+                            // Atualizar campos faltantes no registro existente (backfill)
+                            try {
+                                $exists = $existsByInv;
+                                $update = [];
+                                if (empty($exists['stripe_charge_id']) && ! empty($chargeIdFinal)) {
+                                    $update['stripe_charge_id'] = $chargeIdFinal;
                                 }
-                            } else {
-                                log_message('info', 'Payment idempotente (payment_intent já registrado) pi=' . ($payData['stripe_payment_intent_id'] ?? ''));
+                                if (empty($exists['receipt_url']) && ! empty($receiptUrlFinal)) {
+                                    $update['receipt_url'] = $receiptUrlFinal;
+                                }
+                                if ((empty($exists['amount']) || (float) $exists['amount'] === 0.0) && $amountFinal !== null) {
+                                    $update['amount'] = (float) $amountFinal;
+                                }
+                                if (empty($exists['currency']) && ! empty($currencyFinal)) {
+                                    $update['currency'] = $currencyFinal;
+                                }
+                                if (! empty($update)) {
+                                    $update['updated_at'] = date('Y-m-d H:i:s');
+                                    $this->db->table('payments')->where('id', (int) $exists['id'])->update($update);
+                                    log_message('info', 'Payment idempotente atualizado payment_id=' . (int) $exists['id']);
+                                }
+                            } catch (\Throwable $e) {
+                                log_message('warning', 'invoice.payment_succeeded: falha ao atualizar payment idempotente: ' . $e->getMessage());
                             }
+                        }
+                            } else {
+                        log_message('info', 'Payment idempotente (payment_intent já registrado) pi=' . ($payData['stripe_payment_intent_id'] ?? ''));
+                        // Atualizar campos faltantes no registro existente (backfill)
+                        try {
+                            $exists = $existsByPi;
+                            $update = [];
+                            if (empty($exists['stripe_charge_id']) && ! empty($chargeIdFinal)) {
+                                $update['stripe_charge_id'] = $chargeIdFinal;
+                            }
+                            if (empty($exists['receipt_url']) && ! empty($receiptUrlFinal)) {
+                                $update['receipt_url'] = $receiptUrlFinal;
+                            }
+                            if ((empty($exists['amount']) || (float) $exists['amount'] === 0.0) && $amountFinal !== null) {
+                                $update['amount'] = (float) $amountFinal;
+                            }
+                            if (empty($exists['currency']) && ! empty($currencyFinal)) {
+                                $update['currency'] = $currencyFinal;
+                            }
+                            if (! empty($update)) {
+                                $update['updated_at'] = date('Y-m-d H:i:s');
+                                $this->db->table('payments')->where('id', (int) $exists['id'])->update($update);
+                                log_message('info', 'Payment idempotente atualizado payment_id=' . (int) $exists['id']);
+                            }
+                        } catch (\Throwable $e) {
+                            log_message('warning', 'invoice.payment_succeeded: falha ao atualizar payment idempotente: ' . $e->getMessage());
+                        }
+                    }
                         }
                     } catch (\Throwable $e) {
                         log_message('warning', 'Falha ao registrar payment no invoice.payment_succeeded: ' . $e->getMessage());
@@ -1100,6 +1300,229 @@ class WebhooksController extends BaseController
                 }
 
                 break;
+            case 'payment_intent.succeeded':
+                $pi = $event->data->object;
+                log_message(
+                    'info',
+                    'Stripe payment_intent.succeeded event=' . ($eventId ?? '')
+                        . ' pi=' . ($pi->id ?? '')
+                        . ' customer=' . ($pi->customer ?? '')
+                );
+                try {
+                    $piId = isset($pi->id) ? (string) $pi->id : '';
+                    $customerId = isset($pi->customer) ? (string) $pi->customer : '';
+                    $metaRaw = $pi->metadata ?? null;
+                    $meta = [];
+                    try {
+                        if (is_array($metaRaw)) {
+                            $meta = $metaRaw;
+                        } elseif (is_object($metaRaw) && method_exists($metaRaw, 'toArray')) {
+                            $meta = $metaRaw->toArray();
+                        } elseif (is_object($metaRaw) && $metaRaw instanceof \ArrayAccess) {
+                            $meta = [
+                                'tenant_id' => isset($metaRaw['tenant_id']) ? (string) $metaRaw['tenant_id'] : null,
+                                'app_id' => isset($metaRaw['app_id']) ? (string) $metaRaw['app_id'] : null,
+                                'app_plan_id' => isset($metaRaw['app_plan_id']) ? (string) $metaRaw['app_plan_id'] : null,
+                                'price_id' => isset($metaRaw['price_id']) ? (string) $metaRaw['price_id'] : null,
+                            ];
+                        }
+                    } catch (\Throwable $e) {
+                        log_message('warning', 'payment_intent.succeeded: falha ao converter metadata: ' . $e->getMessage());
+                    }
+                    $tenantId = (int) ($meta['tenant_id'] ?? 0);
+                    $appId = (int) ($meta['app_id'] ?? 0);
+                    $appPlanId = (int) ($meta['app_plan_id'] ?? 0);
+                    $priceId = (string) ($meta['price_id'] ?? '');
+                    $amount = null;
+                    $currency = null;
+
+                    if (isset($pi->amount) && is_int($pi->amount)) {
+                        $amount = number_format($pi->amount / 100, 2, '.', '');
+                    }
+                    if (isset($pi->currency) && is_string($pi->currency)) {
+                        $currency = strtoupper((string) $pi->currency);
+                    }
+
+                    // Fallback tenant via customer id
+                    if ($tenantId <= 0 && $customerId !== '') {
+                        try {
+                            $tenantRow = $this->db->table('tenants')
+                                ->select('id')
+                                ->where('stripe_customer_id', $customerId)
+                                ->get()
+                                ->getRowArray();
+                            if ($tenantRow) {
+                                $tenantId = (int) $tenantRow['id'];
+                                log_message('info', 'payment_intent.succeeded fallback: tenant via stripe_customer_id=' . $customerId . ' tenant_id=' . $tenantId);
+                            } else {
+                                log_message('warning', 'payment_intent.succeeded fallback: nenhum tenant para stripe_customer_id=' . $customerId);
+                            }
+                        } catch (
+                            \Throwable $e
+                        ) {
+                            log_message('warning', 'payment_intent.succeeded fallback: falha ao consultar tenant por customer: ' . $e->getMessage());
+                        }
+                    }
+
+                    // Fallback app via app_plans usando price_id
+                    if (($appId <= 0 || $appPlanId <= 0) && $priceId !== '') {
+                        try {
+                            $planRow = $this->db->table('app_plans')
+                                ->select('id, app_id, price_amount, currency, is_active')
+                                ->where(['stripe_price_id' => $priceId, 'is_active' => 1])
+                                ->get()
+                                ->getRowArray();
+                            if ($planRow) {
+                                $appId = (int) ($planRow['app_id'] ?? $appId);
+                                $appPlanId = (int) ($planRow['id'] ?? $appPlanId);
+                                if ($amount === null && isset($planRow['price_amount'])) {
+                                    $amount = (string) $planRow['price_amount'];
+                                }
+                                if ($currency === null && isset($planRow['currency'])) {
+                                    $currency = (string) $planRow['currency'];
+                                }
+                                log_message('info', 'payment_intent.succeeded fallback: app via app_plans. app_id=' . $appId . ' app_plan_id=' . $appPlanId . ' price_id=' . $priceId);
+                            } else {
+                                log_message('warning', 'payment_intent.succeeded fallback: nenhum app_plans ativo para price_id=' . $priceId);
+                            }
+                        } catch (
+                            \Throwable $e
+                        ) {
+                            log_message('warning', 'payment_intent.succeeded: falha ao consultar app_plans por price: ' . $e->getMessage());
+                        }
+                    }
+
+                    if ($tenantId <= 0 || $appId <= 0) {
+                        $mdDebugStr = null;
+                        try {
+                            if (is_array($meta)) {
+                                $mdDebugStr = json_encode($meta);
+                            } elseif (is_object($metaRaw) && method_exists($metaRaw, 'toArray')) {
+                                $mdDebugStr = json_encode($metaRaw->toArray());
+                            } else {
+                                $mdDebugStr = is_object($metaRaw) ? ('object:' . get_class($metaRaw)) : 'null';
+                            }
+                        } catch (\Throwable $e) {
+                            $mdDebugStr = 'unavailable: ' . $e->getMessage();
+                        }
+                        log_message('warning', 'payment_intent.succeeded metadados insuficientes. tenant_id=' . $tenantId . ' app_id=' . $appId . ' customer=' . $customerId . ' metadata=' . $mdDebugStr);
+                        break;
+                    }
+
+                    // Charge/receipt
+                    $receiptUrl = null;
+                    $chargeId = null;
+                    $paidAt = null;
+                    if (isset($pi->charges) && isset($pi->charges->data[0])) {
+                        try {
+                            $ch = $pi->charges->data[0];
+                            if (isset($ch->receipt_url)) {
+                                $receiptUrl = (string) $ch->receipt_url;
+                            }
+                            if (isset($ch->id)) {
+                                $chargeId = (string) $ch->id;
+                            }
+                            if (isset($ch->created)) {
+                                $paidAt = date('Y-m-d H:i:s', (int) $ch->created);
+                            }
+                        } catch (\Throwable $e) {
+                            log_message('warning', 'payment_intent.succeeded: falha ao extrair charge: ' . $e->getMessage());
+                        }
+                    }
+
+                    // Se faltarem detalhes, recuperar PI com expand para obter charge/receipt e valor/moeda
+                    if (($receiptUrl === null || $chargeId === null || $amount === null || $currency === null) && $piId !== '') {
+                        $secretKey = (string) (env('STRIPE_SECRET_KEY') ?? getenv('STRIPE_SECRET_KEY') ?? '');
+                        if ($secretKey !== '') {
+                            try {
+                                $stripe = new \Stripe\StripeClient($secretKey);
+                                $piFresh = $stripe->paymentIntents->retrieve($piId, ['expand' => ['charges.data']]);
+                                if (isset($piFresh->charges) && isset($piFresh->charges->data[0])) {
+                                    $ch = $piFresh->charges->data[0];
+                                    if ($receiptUrl === null && isset($ch->receipt_url)) {
+                                        $receiptUrl = (string) $ch->receipt_url;
+                                    }
+                                    if ($chargeId === null && isset($ch->id)) {
+                                        $chargeId = (string) $ch->id;
+                                    }
+                                    if ($paidAt === null && isset($ch->created)) {
+                                        $paidAt = date('Y-m-d H:i:s', (int) $ch->created);
+                                    }
+                                }
+                                if ($amount === null && isset($piFresh->amount) && is_int($piFresh->amount)) {
+                                    $amount = number_format($piFresh->amount / 100, 2, '.', '');
+                                }
+                                if ($currency === null && isset($piFresh->currency) && is_string($piFresh->currency)) {
+                                    $currency = strtoupper((string) $piFresh->currency);
+                                }
+                            } catch (\Throwable $e) {
+                                log_message('warning', 'payment_intent.succeeded: falha ao recuperar PI para charge/receipt: ' . $e->getMessage());
+                            }
+                        }
+                    }
+
+                    $now = date('Y-m-d H:i:s');
+                    $payData = [
+                        'tenant_id' => $tenantId,
+                        'app_id' => $appId,
+                        'subscription_id' => null,
+                        'amount' => $amount !== null ? (float) $amount : null,
+                        'currency' => (string) ($currency ?? ''),
+                        'status' => 'succeeded',
+                        'payment_method' => null,
+                        'provider' => 'stripe',
+                        'stripe_payment_intent_id' => $piId ?: null,
+                        'stripe_charge_id' => $chargeId ?: null,
+                        'stripe_invoice_id' => null,
+                        'receipt_url' => $receiptUrl ?: null,
+                        'error_code' => null,
+                        'error_message' => null,
+                        'paid_at' => $paidAt ?? $now,
+                        'due_at' => null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+
+                    // Idempotência
+                    $exists = null;
+                    if (! empty($payData['stripe_payment_intent_id'])) {
+                        $exists = $this->db->table('payments')
+                            ->where('stripe_payment_intent_id', $payData['stripe_payment_intent_id'])
+                            ->get()->getRowArray();
+                    }
+                    if (! $exists && ! empty($payData['stripe_charge_id'])) {
+                        $exists = $this->db->table('payments')
+                            ->where('stripe_charge_id', $payData['stripe_charge_id'])
+                            ->get()->getRowArray();
+                    }
+                    if (! $exists) {
+                        $this->db->table('payments')->insert($payData);
+                        $paymentId = (int) $this->db->insertID();
+                        log_message('info', 'Payment registrado via payment_intent.succeeded (one_time). payment_id=' . $paymentId . ' tenant_id=' . $tenantId . ' app_id=' . $appId . ' pi=' . ($payData['stripe_payment_intent_id'] ?? '') . ' charge=' . ($payData['stripe_charge_id'] ?? ''));
+                    } else {
+                            // Atualizar registro idempotente com campos ausentes, se disponíveis agora
+                            try {
+                                $update = [];
+                                if (empty($exists['stripe_charge_id']) && ! empty($chargeId)) { $update['stripe_charge_id'] = $chargeId; }
+                                if (empty($exists['receipt_url']) && ! empty($receiptUrl)) { $update['receipt_url'] = $receiptUrl; }
+                                if ((empty($exists['amount']) || (float)$exists['amount'] === 0.0) && $amount !== null) { $update['amount'] = (float) $amount; }
+                                if (empty($exists['currency']) && ! empty($currency)) { $update['currency'] = $currency; }
+                                if (! empty($update)) {
+                                    $update['updated_at'] = date('Y-m-d H:i:s');
+                                    $this->db->table('payments')->where('id', (int) $exists['id'])->update($update);
+                                    log_message('info', 'Payment idempotente atualizado via payment_intent.succeeded payment_id=' . (int) $exists['id']);
+                                } else {
+                                    log_message('info', 'Payment idempotente via payment_intent.succeeded pi=' . ($payData['stripe_payment_intent_id'] ?? '') . ' charge=' . ($payData['stripe_charge_id'] ?? ''));
+                                }
+                            } catch (\Throwable $e) {
+                                log_message('warning', 'payment_intent.succeeded: falha ao atualizar payment idempotente: ' . $e->getMessage());
+                            }
+                        }
+                } catch (\Throwable $e) {
+                    log_message('error', 'Erro ao processar payment_intent.succeeded: ' . $e->getMessage());
+                }
+
+                break;
             case 'checkout.session.completed':
                 $cs = $event->data->object;
                 log_message(
@@ -1145,6 +1568,185 @@ class WebhooksController extends BaseController
                 }
 
                 // 3.3) Upsert de assinatura para o tenant/app
+                // 3.3.0) Se for pagamento único (mode=payment), registrar payment e não criar assinatura
+                $mode = isset($cs->mode) ? (string) $cs->mode : '';
+                if ($mode === 'payment') {
+                    try {
+                        $metaRaw = $cs->metadata ?? null;
+                        $meta = [];
+                        try {
+                            if (is_array($metaRaw)) {
+                                $meta = $metaRaw;
+                            } elseif (is_object($metaRaw) && method_exists($metaRaw, 'toArray')) {
+                                $meta = $metaRaw->toArray();
+                            } elseif (is_object($metaRaw) && $metaRaw instanceof \ArrayAccess) {
+                                $meta = [
+                                    'tenant_id' => isset($metaRaw['tenant_id']) ? (string) $metaRaw['tenant_id'] : null,
+                                    'app_id' => isset($metaRaw['app_id']) ? (string) $metaRaw['app_id'] : null,
+                                    'app_plan_id' => isset($metaRaw['app_plan_id']) ? (string) $metaRaw['app_plan_id'] : null,
+                                    'price_id' => isset($metaRaw['price_id']) ? (string) $metaRaw['price_id'] : null,
+                                ];
+                            }
+                        } catch (\Throwable $e) {
+                            log_message('warning', 'checkout.session.completed payment: falha ao converter metadata: ' . $e->getMessage());
+                        }
+                        $clientRef = (string) ($cs->client_reference_id ?? '');
+                        $customerId = (string) ($cs->customer ?? '');
+                        $tenantId = is_numeric($clientRef) ? (int) $clientRef : (int) ($meta['tenant_id'] ?? 0);
+                        $appId = (int) ($meta['app_id'] ?? 0);
+                        $appPlanId = (int) ($meta['app_plan_id'] ?? 0);
+                        $priceId = (string) ($meta['price_id'] ?? '');
+                        $amount = null;
+                        $currency = null;
+
+                        if (isset($cs->amount_total) && is_int($cs->amount_total)) {
+                            $amount = number_format($cs->amount_total / 100, 2, '.', '');
+                        }
+                        if (isset($cs->currency) && is_string($cs->currency)) {
+                            $currency = strtoupper((string) $cs->currency);
+                        }
+
+                        // Fallback: resolver tenant via customer -> tenants.stripe_customer_id
+                        if ($tenantId <= 0 && $customerId !== '') {
+                            try {
+                                $tenantRow = $this->db->table('tenants')
+                                    ->select('id')
+                                    ->where('stripe_customer_id', $customerId)
+                                    ->get()
+                                    ->getRowArray();
+                                if ($tenantRow) {
+                                    $tenantId = (int) $tenantRow['id'];
+                                    log_message('info', 'checkout.session.completed payment fallback: tenant resolvido via stripe_customer_id=' . $customerId . ' tenant_id=' . $tenantId);
+                                } else {
+                                    log_message('warning', 'checkout.session.completed payment fallback: nenhum tenant encontrado para stripe_customer_id=' . $customerId);
+                                }
+                            } catch (\Throwable $e) {
+                                log_message('warning', 'checkout.session.completed payment fallback: falha ao consultar tenant por customer: ' . $e->getMessage());
+                            }
+                        }
+
+                        // Fallback: resolver app via app_plans usando price_id
+                        if (($appId <= 0 || $appPlanId <= 0) && $priceId !== '') {
+                            try {
+                                $planRow = $this->db->table('app_plans')
+                                    ->select('id, app_id, price_amount, currency, is_active')
+                                    ->where(['stripe_price_id' => $priceId, 'is_active' => 1])
+                                    ->get()
+                                    ->getRowArray();
+                                if ($planRow) {
+                                    $appId = (int) ($planRow['app_id'] ?? $appId);
+                                    $appPlanId = (int) ($planRow['id'] ?? $appPlanId);
+                                    if ($amount === null && isset($planRow['price_amount'])) {
+                                        $amount = (string) $planRow['price_amount'];
+                                    }
+                                    if ($currency === null && isset($planRow['currency'])) {
+                                        $currency = (string) $planRow['currency'];
+                                    }
+                                    log_message('info', 'checkout.session.completed payment fallback: app resolvido via app_plans. app_id=' . $appId . ' app_plan_id=' . $appPlanId . ' price_id=' . $priceId);
+                                } else {
+                                    log_message('warning', 'checkout.session.completed payment fallback: nenhum app_plans ativo encontrado para price_id=' . $priceId);
+                                }
+                            } catch (\Throwable $e) {
+                                log_message('warning', 'checkout.session.completed payment: falha ao consultar app_plans por price: ' . $e->getMessage());
+                            }
+                        }
+
+                        if ($tenantId <= 0 || $appId <= 0) {
+                            $mdDebugStr = null;
+                            try {
+                                if (is_array($meta)) {
+                                    $mdDebugStr = json_encode($meta);
+                                } elseif (is_object($metaRaw) && method_exists($metaRaw, 'toArray')) {
+                                    $mdDebugStr = json_encode($metaRaw->toArray());
+                                } else {
+                                    $mdDebugStr = is_object($metaRaw) ? ('object:' . get_class($metaRaw)) : 'null';
+                                }
+                            } catch (\Throwable $e) {
+                                $mdDebugStr = 'unavailable: ' . $e->getMessage();
+                            }
+                            log_message('warning', 'checkout.session.completed payment metadados insuficientes. tenant_id=' . $tenantId . ' app_id=' . $appId . ' client_reference_id=' . $clientRef . ' customer=' . $customerId . ' metadata=' . $mdDebugStr);
+                            break;
+                        }
+
+                        // Obter dados do PaymentIntent/Charge para receipt_url
+                        $piId = isset($cs->payment_intent) ? (string) $cs->payment_intent : '';
+                        $receiptUrl = null;
+                        $chargeId = null;
+                        $paidAt = null;
+
+                        $secretKey = (string) (env('STRIPE_SECRET_KEY') ?? getenv('STRIPE_SECRET_KEY') ?? '');
+                        if ($secretKey !== '' && $piId !== '') {
+                            try {
+                                $stripe = new StripeClient($secretKey);
+                                $pi = $stripe->paymentIntents->retrieve($piId, ['expand' => ['charges.data']]);
+                                if (isset($pi->charges) && isset($pi->charges->data[0])) {
+                                    $ch = $pi->charges->data[0];
+                                    $chargeId = (string) ($ch->id ?? '');
+                                    $receiptUrl = (string) ($ch->receipt_url ?? '');
+                                    if (isset($ch->created) && is_int($ch->created)) {
+                                        $paidAt = date('Y-m-d H:i:s', (int) $ch->created);
+                                    }
+                                }
+                                if ($amount === null && isset($pi->amount) && is_int($pi->amount)) {
+                                    $amount = number_format($pi->amount / 100, 2, '.', '');
+                                }
+                                if ($currency === null && isset($pi->currency) && is_string($pi->currency)) {
+                                    $currency = strtoupper((string) $pi->currency);
+                                }
+                            } catch (\Throwable $e) {
+                                log_message('warning', 'Falha ao recuperar PaymentIntent para pagamento único: ' . $e->getMessage());
+                            }
+                        }
+
+                        $status = ((string) ($cs->payment_status ?? '')) === 'paid' ? 'succeeded' : 'pending';
+
+                        $now = date('Y-m-d H:i:s');
+                        $payData = [
+                            'tenant_id' => $tenantId,
+                            'app_id' => $appId,
+                            'subscription_id' => null,
+                            'amount' => $amount !== null ? (float) $amount : 0.0,
+                            'currency' => $currency ?? 'BRL',
+                            'status' => $status,
+                            'payment_method' => null,
+                            'provider' => 'stripe',
+                            'stripe_payment_intent_id' => $piId ?: null,
+                            'stripe_charge_id' => $chargeId ?: null,
+                            'stripe_invoice_id' => null,
+                            'receipt_url' => $receiptUrl ?: null,
+                            'error_code' => null,
+                            'error_message' => null,
+                            'paid_at' => $status === 'succeeded' ? ($paidAt ?? $now) : null,
+                            'due_at' => null,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+
+                        // Idempotência: checar por payment_intent OU charge_id
+                        $exists = null;
+                        if (! empty($payData['stripe_payment_intent_id'])) {
+                            $exists = $this->db->table('payments')
+                                ->where('stripe_payment_intent_id', $payData['stripe_payment_intent_id'])
+                                ->get()->getRowArray();
+                        }
+                        if (! $exists && ! empty($payData['stripe_charge_id'])) {
+                            $exists = $this->db->table('payments')
+                                ->where('stripe_charge_id', $payData['stripe_charge_id'])
+                                ->get()->getRowArray();
+                        }
+                        if (! $exists) {
+                            $this->db->table('payments')->insert($payData);
+                            $paymentId = (int) $this->db->insertID();
+                            log_message('info', 'Payment registrado via checkout.session.completed (one_time). payment_id=' . $paymentId . ' tenant_id=' . $tenantId . ' app_id=' . $appId . ' pi=' . ($payData['stripe_payment_intent_id'] ?? '') . ' charge=' . ($payData['stripe_charge_id'] ?? ''));
+                        } else {
+                            log_message('info', 'Payment idempotente (one_time) pi=' . ($payData['stripe_payment_intent_id'] ?? '') . ' charge=' . ($payData['stripe_charge_id'] ?? ''));
+                        }
+                    } catch (\Throwable $e) {
+                        log_message('error', 'Erro ao processar checkout.session.completed (mode=payment): ' . $e->getMessage());
+                    }
+                    break;
+                }
+
                 try {
                     $meta = (array) ($cs->metadata ?? []);
                     $tenantId = is_numeric((string) ($cs->client_reference_id ?? '')) ? (int) $cs->client_reference_id : (int) ($meta['tenant_id'] ?? 0);

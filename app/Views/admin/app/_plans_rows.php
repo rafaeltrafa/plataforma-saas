@@ -7,7 +7,7 @@
             <td>
                 <div class="d-flex align-items-center">
                     <div class="ms-0">
-                        <h6 class="fs-4 fw-semibold mb-0"> <span class="badge bg-light-subtle me-2">Cod. <?php echo (int)($plan['id'] ?? 0); ?></span><i class="ti ti-package me-2 text-primary"></i><?php echo esc($plan['name'] ?? '—'); ?></h6>
+                        <h6 class="fs-4 fw-semibold mb-0"> <span class="badge rounded-pill  bg-secondary-subtle text-secondary me-2">Cod. <?php echo (int)($plan['id'] ?? 0); ?></span><i class="ti ti-package me-2 text-primary"></i><?php echo esc($plan['name'] ?? '—'); ?></h6>
                     </div>
                 </div>
             </td>
