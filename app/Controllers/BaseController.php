@@ -54,6 +54,16 @@ abstract class BaseController extends Controller
     /**
      * @return void
      */
+
+    protected function buildPageHeader($title, $breadcrumbs = [])
+    {
+        return [
+            'title' => $title,
+            'breadcrumbs' => $breadcrumbs
+        ];
+    }
+
+
     public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)
     {
         // Do Not Edit This Line

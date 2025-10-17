@@ -81,9 +81,19 @@ class CheckoutController extends BaseApiController
         $stripe = new StripeClient($secret);
 
         try {
+            // Checar tipo de price na Stripe para decidir o mode (subscription/payment)
+            $isRecurring = true;
+            try {
+                $priceObj = $stripe->prices->retrieve($priceId, []);
+                $isRecurring = isset($priceObj->recurring) && is_object($priceObj->recurring);
+            } catch (\Throwable $e) {
+                // Se não conseguir obter o price, manter comportamento padrão (subscription)
+                log_message('warning', 'CheckoutSession: falha ao obter price ' . $priceId . ' para decidir mode: ' . $e->getMessage());
+                $isRecurring = true;
+            }
+
             // Monta payload evitando enviar 'customer' vazio (Stripe rejeita string vazia/nulo)
             $params = [
-                'mode' => 'subscription',
                 'line_items' => [[
                     'price' => $priceId,
                     'quantity' => max(1, $quantity),
@@ -98,18 +108,25 @@ class CheckoutController extends BaseApiController
                     'app_plan_id' => (string) $appPlanId,
                     'price_id' => $priceId,
                 ],
+                // Qualidade de vida
+                'allow_promotion_codes' => true,
+            ];
+
+            if ($isRecurring) {
+                $params['mode'] = 'subscription';
                 // As metadata abaixo propagam para a assinatura criada
-                'subscription_data' => [
+                $params['subscription_data'] = [
                     'metadata' => [
                         'tenant_id' => (string) $tenantId,
                         'app_id' => (string) $appId,
                         'app_plan_id' => (string) $appPlanId,
                         'price_id' => $priceId,
                     ],
-                ],
-                // Qualidade de vida
-                'allow_promotion_codes' => true,
-            ];
+                ];
+            } else {
+                $params['mode'] = 'payment';
+                // Em 'payment' não enviar subscription_data
+            }
 
             if (is_string($stripeCustomerId) && trim($stripeCustomerId) !== '') {
                 // Reaproveitar o cliente se já existir
