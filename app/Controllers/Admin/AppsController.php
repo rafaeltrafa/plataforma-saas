@@ -627,4 +627,49 @@ class AppsController extends BaseController
             'id' => $id,
         ]);
     }
+
+    public function delete(int $id)
+    {
+        $appsModel = new AppModel();
+        $app = $appsModel->find($id);
+        if (!$app) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'success' => false,
+                'message' => 'App não encontrado'
+            ]);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $tenantAppsCount = $db->table('tenant_apps')->where('app_id', $id)->countAllResults();
+            $paymentsCount   = $db->table('payments')->where('app_id', $id)->countAllResults();
+            $subsCount       = $db->table('subscriptions')->where('app_id', $id)->countAllResults();
+
+            if ($tenantAppsCount > 0 || $paymentsCount > 0 || $subsCount > 0) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'App possui vínculos e não pode ser excluído'
+                ]);
+            }
+        } catch (\Throwable $e) {
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Erro ao verificar vínculos'
+            ]);
+        }
+
+        $deleted = $appsModel->delete($id);
+        if ($deleted === false) {
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Falha ao excluir app'
+            ]);
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'App excluído com sucesso',
+            'id' => $id,
+        ]);
+    }
 }

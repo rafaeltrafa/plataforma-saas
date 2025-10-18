@@ -26,7 +26,9 @@
                         <h6 class="fs-4 fw-semibold mb-0">App</h6>
                     </th>
 
-
+                    <th>
+                        <h6 class="fs-4 fw-semibold mb-0">Planos</h6>
+                    </th>
                     <th>
                         <h6 class="fs-4 fw-semibold mb-0">Status</h6>
                     </th>
@@ -55,6 +57,9 @@
                                 </div>
                             </td>
                             <td>
+                                <i class="ti ti-receipt fs-5 text-warning cursor-pointer subscriptions-action" title="Assinaturas" data-app-id="<?php echo (int)($app['id'] ?? 0); ?>" data-app-name="<?php echo esc($app['name'] ?? ''); ?>" data-bs-toggle="modal" data-bs-target="#bs-example-modal-xlg"></i>
+                            </td>
+                            <td>
                                 <?php if (!empty($app['is_active'])) : ?>
                                     <span class="badge bg-success-subtle text-success">Active</span>
                                 <?php else : ?>
@@ -66,11 +71,30 @@
                                     <a href="javascript:void(0)" class="text-primary edit-app-action" data-bs-toggle="modal" data-bs-target="#edit-app-modal" data-bs-toggle="tooltip" title="Editar" data-app-id="<?php echo (int)($app['id'] ?? 0); ?>" data-app-name="<?php echo esc($app['name'] ?? ''); ?>">
                                         <i class="ti ti-pencil fs-5"></i>
                                     </a>
-                                    <i class="ti ti-receipt fs-5 text-warning cursor-pointer subscriptions-action" title="Assinaturas" data-app-id="<?php echo (int)($app['id'] ?? 0); ?>" data-app-name="<?php echo esc($app['name'] ?? ''); ?>" data-bs-toggle="modal" data-bs-target="#bs-example-modal-xlg"></i>
+
                                     <?php if (!empty($app['is_active'])) : ?>
                                         <i class="ti ti-power fs-5 text-danger cursor-pointer deactivate-action" data-app-id="<?php echo (int)($app['id'] ?? 0); ?>" data-bs-toggle="tooltip" title="Desativar"></i>
                                     <?php else : ?>
                                         <i class="ti ti-check fs-5 text-success cursor-pointer activate-action" data-app-id="<?php echo (int)($app['id'] ?? 0); ?>" data-bs-toggle="tooltip" title="Ativar"></i>
+                                    <?php endif; ?>
+                                    <?php
+                                    // Exibir ícone de exclusão apenas se não houver vínculos do app
+                                    $canDelete = false;
+                                    try {
+                                        $db = \Config\Database::connect();
+                                        $currentAppId = (int)($app['id'] ?? 0);
+                                        if ($currentAppId > 0) {
+                                            $tenantAppsCount = $db->table('tenant_apps')->where('app_id', $currentAppId)->countAllResults();
+                                            $paymentsCount   = $db->table('payments')->where('app_id', $currentAppId)->countAllResults();
+                                            $subsCount       = $db->table('subscriptions')->where('app_id', $currentAppId)->countAllResults();
+                                            $canDelete = ($tenantAppsCount === 0 && $paymentsCount === 0 && $subsCount === 0);
+                                        }
+                                    } catch (\Throwable $e) {
+                                        // opcional: log_message('warning', 'Falha ao checar vínculos para exclusão do app: ' . $e->getMessage());
+                                    }
+                                    if ($canDelete):
+                                    ?>
+                                        <i class="ti ti-trash fs-5 text-danger cursor-pointer delete-app-action" data-app-id="<?php echo (int)($app['id'] ?? 0); ?>" data-app-name="<?php echo esc($app['name'] ?? ''); ?>" data-bs-toggle="tooltip" title="Excluir"></i>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -217,6 +241,26 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn bg-danger-subtle text-danger" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Exclusão de App -->
+<div class="modal fade" id="delete-app-modal" tabindex="-1" aria-labelledby="delete-app-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header modal-colored-header bg-danger text-white">
+                <h4 class="modal-title text-white" id="delete-app-modal-label">Excluir App</h4>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Tem certeza que deseja excluir o app <strong id="delete-app-name">&nbsp;</strong>?</p>
+                <p class="text-muted mb-0">Esta ação é permanente. O app será removido apenas se não houver nenhum vínculo em <code>tenant_apps</code>, <code>payments</code> ou <code>subscriptions</code>.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn bg-secondary-subtle text-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn bg-danger text-white" id="confirm-delete-app-btn" data-app-id="">Excluir</button>
             </div>
         </div>
     </div>

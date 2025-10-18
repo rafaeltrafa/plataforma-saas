@@ -290,6 +290,7 @@ class WebhooksController extends BaseController
                         'stripe_subscription_id' => $stripeSubId ?: ($existing['stripe_subscription_id'] ?? null),
                         'stripe_price_id' => $priceId ?: ($existing['stripe_price_id'] ?? null),
                         'is_active' => in_array($status, ['active', 'trialing', 'past_due', 'incomplete'], true) ? 1 : 0,
+                        'incomplete_expires_at' => ($status === 'incomplete' ? ($existing['incomplete_expires_at'] ?? null) : null),
                         'updated_at' => $now,
                     ];
 
@@ -590,6 +591,7 @@ class WebhooksController extends BaseController
                                         'currency' => $currency ?: ($existingByStripe['currency'] ?? null),
                                         'current_period_start' => $periodStartDt,
                                         'current_period_end' => $periodEndDt,
+                                        'incomplete_expires_at' => null,
                                         'updated_at' => $now,
                                     ];
                                     $subsTable->where('id', (int) $existingByStripe['id'])->update($dataPartial);
@@ -772,6 +774,7 @@ class WebhooksController extends BaseController
                         'stripe_subscription_id' => $stripeSubId,
                         'stripe_price_id' => ($priceId ?: ($priceIdMeta ?: ($existing['stripe_price_id'] ?? null))),
                         'is_active' => in_array($status, ['active', 'trialing', 'past_due', 'incomplete'], true) ? 1 : 0,
+                        'incomplete_expires_at' => null,
                         'updated_at' => $now,
                     ];
 
@@ -1867,6 +1870,7 @@ class WebhooksController extends BaseController
                         'stripe_subscription_id' => $stripeSubId ?: ($existing['stripe_subscription_id'] ?? null),
                         'stripe_price_id' => $priceId ?: ($existing['stripe_price_id'] ?? null),
                         'is_active' => in_array($status, ['active', 'trialing', 'past_due', 'incomplete'], true) ? 1 : 0,
+                        'incomplete_expires_at' => ($status === 'incomplete' ? ($existing['incomplete_expires_at'] ?? null) : null),
                         'updated_at' => $now,
                     ];
 

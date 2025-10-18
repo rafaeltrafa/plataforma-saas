@@ -5,15 +5,53 @@ use CodeIgniter\Router\RouteCollection;
 /**
  * @var RouteCollection $routes
  */
-$routes->get('/', 'Home::index');
+$routes->get('/', 'Admin\\DashboardController::index');
 
 // Admin routes
 $routes->group('admin', ['namespace' => 'App\\Controllers\\Admin'], static function (RouteCollection $routes): void {
+
+
     $routes->get('', 'DashboardController::index');
     $routes->get('dashboard', 'DashboardController::index');
+    $routes->get('subscription', 'SubscritionController::index');
+    // Busca de assinaturas (AJAX)
+    $routes->get('subscription/search', 'SubscritionController::search');
+    $routes->get('subscription/search/', 'SubscritionController::search');
+
+    // Planos por aplicativo (AJAX)
+    $routes->get('subscription/plans', 'SubscritionController::plans');
+    $routes->get('subscription/plans/(:segment)', 'SubscritionController::plans/$1');
+    $routes->get('subscrition', 'SubscritionController::index');
+    $routes->get('subscrition/', 'SubscritionController::index');
+
+    // Assinaturas: ações de status
+    $routes->get('subscription/pause/(:num)', 'SubscritionController::pause/$1');
+    $routes->get('subscription/cancel/(:num)', 'SubscritionController::cancel/$1');
+    $routes->get('subscription/expire/(:num)', 'SubscritionController::expire/$1');
+    $routes->get('subscription/unpaid/(:num)', 'SubscritionController::markUnpaid/$1');
+    $routes->get('subscription/pastdue/(:num)', 'SubscritionController::markPastDue/$1');
+    $routes->get('subscription/trial/(:num)', 'SubscritionController::startTrial/$1');
+
+    // AJAX POST (sem recarregar página)
+    $routes->post('subscription/pause/(:num)', 'SubscritionController::pause/$1');
+$routes->post('subscription/cancel/(:num)', 'SubscritionController::cancel/$1');
+$routes->post('subscription/expire/(:num)', 'SubscritionController::expire/$1');
+$routes->post('subscription/unpaid/(:num)', 'SubscritionController::markUnpaid/$1');
+$routes->post('subscription/pastdue/(:num)', 'SubscritionController::markPastDue/$1');
+$routes->post('subscription/trial/(:num)', 'SubscritionController::startTrial/$1');
+
+// Unified status endpoint (preferred)
+$routes->post('subscription/status/(:num)', 'SubscritionController::updateStatus/$1');
+// Fallback GET (not recommended, kept for compatibility)
+$routes->get('subscription/status/(:num)', 'SubscritionController::updateStatus/$1');
     // Suporte a barra final
     $routes->get('dashboard/', 'DashboardController::index');
     $routes->get('tenant/', 'TenantController::index');
+    // Novo: rota sem barra final para tenants
+    $routes->get('tenant', 'TenantController::index');
+    // Busca de tenants (AJAX)
+    $routes->get('tenant/search', 'TenantController::search');
+    $routes->get('tenant/search/', 'TenantController::search');
     $routes->get('apps/', 'AppsController::index');
     // Buscar planos do app (para modal de assinaturas)
     $routes->get('apps/(:num)/plans', 'AppsController::plans/$1');
@@ -66,6 +104,11 @@ $routes->group('admin', ['namespace' => 'App\\Controllers\\Admin'], static funct
     $routes->get('apps/(:num)/edit/', 'AppsController::editAppForm/$1');
     $routes->post('apps/(:num)', 'AppsController::updateApp/$1');
     $routes->post('apps/(:num)/', 'AppsController::updateApp/$1');
+
+    // Excluir App (somente se sem vínculos)
+    $routes->post('apps/(:num)/delete', 'AppsController::delete/$1');
+    // Fallback GET
+    $routes->get('apps/(:num)/delete', 'AppsController::delete/$1');
 });
 
 // API v1 routes

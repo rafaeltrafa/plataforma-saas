@@ -29,8 +29,28 @@
     }
   }
 
+  async function requestDelete(id) {
+    const fullBase = buildBase();
+    try {
+      let res = await fetch(`${fullBase}${id}/delete`, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!res.ok) {
+        res = await fetch(`${fullBase}${id}/delete`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+        });
+      }
+      const data = await res.json().catch(() => ({ success: false }));
+      return { ok: res.ok && data.success, data };
+    } catch (e) {
+      return { ok: false, data: { success: false, message: 'Erro de rede' } };
+    }
+  }
+
   function updateBadge(row, isActive) {
-    const badge = row.querySelector('td:nth-child(2) .badge');
+    const badge = row.querySelector('td:nth-child(3) .badge');
     if (!badge) return;
     if (isActive) {
       badge.textContent = 'Active';
@@ -675,6 +695,53 @@
           alert('Erro de rede ao atualizar plano');
         }
         console.error('Erro ao enviar formulário de edição:', err);
+      }
+    });
+
+    // Abrir modal de Exclusão de App
+    document.addEventListener('click', function (e) {
+      const delIcon = e.target.closest('.delete-app-action');
+      if (!delIcon) return;
+      e.preventDefault();
+      const appId = delIcon.dataset.appId;
+      const appName = delIcon.dataset.appName || '';
+      if (!appId) return;
+      const modalEl = document.getElementById('delete-app-modal');
+      const nameEl = document.getElementById('delete-app-name');
+      const confirmBtn = document.getElementById('confirm-delete-app-btn');
+      if (nameEl) nameEl.textContent = appName;
+      if (confirmBtn) confirmBtn.dataset.appId = appId;
+      if (modalEl) {
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+      }
+    });
+
+    // Confirmar exclusão de App
+    document.addEventListener('click', async function (e) {
+      const btn = e.target.closest('#confirm-delete-app-btn');
+      if (!btn) return;
+      e.preventDefault();
+      const appId = btn.dataset.appId;
+      if (!appId) return;
+      btn.setAttribute('disabled', 'disabled');
+
+      const { ok, data } = await requestDelete(appId);
+
+      btn.removeAttribute('disabled');
+      const modalEl = document.getElementById('delete-app-modal');
+      if (modalEl) {
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.hide();
+      }
+
+      if (ok) {
+        if (window.Swal) Swal.fire('Excluído', data.message || 'App excluído com sucesso', 'success');
+        else alert(data.message || 'App excluído com sucesso');
+        window.location.reload();
+      } else {
+        if (window.Swal) Swal.fire('Erro', data.message || 'Falha ao excluir App', 'error');
+        else alert(data.message || 'Falha ao excluir App');
       }
     });
   });

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br" dir="ltr" data-bs-theme="dark" data-color-theme="Aqua_Theme" data-layout="vertical">
+<html lang="pt-br" dir="ltr" data-bs-theme="light" data-color-theme="Purple_Theme" data-layout="vertical">
 
 <head>
     <!-- Required meta tags -->

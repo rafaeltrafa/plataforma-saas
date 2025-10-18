@@ -35,6 +35,11 @@ class CreateTenantsTable extends Migration
                 'constraint' => 30,
                 'null' => true,
             ],
+            'whatsapp' => [
+                'type' => 'VARCHAR',
+                'constraint' => 30,
+                'null' => true,
+            ],
             'document_number' => [
                 'type' => 'VARCHAR',
                 'constraint' => 20,
